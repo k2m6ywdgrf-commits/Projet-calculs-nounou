@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <!-- Blocage strict du zoom sur mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NounouPay Pro v4.1</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            touch-action: manipulation;
+            -webkit-text-size-adjust: none;
+        }
+        input, select, textarea, button {
+            font-size: 16px !important; 
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .glass-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: white;
+        }
+        .glass-input:focus {
+            outline: none;
+            border-color: rgba(6, 182, 212, 0.4);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .glass-input:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background: rgba(0, 0, 0, 0.15);
+        }
+        html, body { overflow-x: hidden; max-width: 100%; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 min-h-screen text-white font-sans antialiased flex justify-center items-center p-0 sm:p-4 overflow-x-hidden">
+
+    <!-- Conteneur Mockup iPhone -->
+    <div class="w-full max-w-md sm:rounded-[45px] shadow-2xl overflow-hidden h-screen sm:h-[880px] flex flex-col relative p-5 bg-slate-900/20 border border-slate-800/80 overflow-x-hidden">
+        
+        <!-- Orbes de lumière background -->
+        <div class="absolute -top-20 -left-20 w-72 h-72 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute top-1/3 -right-20 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute bottom-20 left-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- EN-TÊTE -->
+        <header class="relative z-10 pt-2 mb-3">
+            <div class="flex justify-between items-center mb-3">
+                <div>
+                    <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Suivi de Garde</span>
+                    <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">NounouPay Pro</h1>
+                </div>
+                <div class="glass-card px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 border-cyan-500/20 relative cursor-pointer hover:bg-white/10 transition">
+                    <span id="labelPeriode">Juin 2026</span>
+                    <input type="month" id="periodePaye" value="2026-06" class="absolute inset-0 opacity-0 cursor-pointer" onchange="changerMoisGlobal(this.value)">
+                </div>
+            </div>
+            <div id="tabsEnfantsContainer" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+        </header>
+
+        <!-- NAVIGATION HAUT -->
+        <nav class="relative z-10 p-1 rounded-xl flex bg-slate-950/50 border border-white/5 mb-4 shrink-0">
+            <button onclick="switchTab('dashboard')" id="btnNavDashboard" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all text-cyan-400 bg-white/10 shadow-sm flex items-center justify-center gap-1.5">
+                <span>📊</span> Dashboard
+            </button>
+            <button onclick="switchTab('settings')" id="btnNavSettings" class="flex-1 py-2 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-white flex items-center justify-center gap-1.5">
+                <span>⚙️</span> Configuration
+            </button>
+        </nav>
+
+        <!-- ZONE INTERACTIVE SCROLLABLE -->
+        <div class="flex-1 overflow-y-auto no-scrollbar relative z-10 w-full overflow-x-hidden pb-4">
+            
+            <!-- ================= TABLEAU DE BORD (DASHBOARD) ================= -->
+            <div id="tabDashboard" class="space-y-4">
+                
+                <!-- Calendrier -->
+                <section class="glass-card rounded-2xl p-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Planning Mensuel</h2>
+                        </div>
+                        <div id="badgeContainer" class="text-[10px] font-bold"></div>
+                    </div>
+                    <div id="calendrierGrid" class="grid grid-cols-7 gap-1.5 text-center text-[11px]"></div>
+                </section>
+
+                <div id="infoModeCalcul" class="text-center py-1 rounded-lg text-[10px] font-bold tracking-wide"></div>
+
+                <!-- Blocs de résultats -->
+                <div class="space-y-3">
+                    
+                    <!-- HEURES NORMALES -->
+                    <div id="blockNormal" class="glass-card rounded-xl p-3.5 border-l-4 border-l-cyan-500">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-bold text-cyan-300 uppercase tracking-wide flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> Heures normales
+                            </label>
+                            <span id="totalNormal" class="text-sm font-black text-cyan-100">0,00 €</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 text-xs text-slate-400">
+                            <div>Heures : <span id="dashQuantiteNormal" class="font-bold text-white">0h</span></div>
+                            <div class="text-right">Taux : <span id="dashValTauxNormal" class="font-bold text-white">0 €</span></div>
+                        </div>
+                    </div>
+
+                    <!-- HEURES MAJORÉES -->
+                    <div id="blockMajore" class="glass-card rounded-xl p-3.5 border-l-4 border-l-purple-500 hidden">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-bold text-purple-300 uppercase tracking-wide flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> Heures majorées
+                            </label>
+                            <span id="totalMajore" class="text-sm font-black text-purple-100">0,00 €</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 text-xs text-slate-400">
+                            <div>Heures : <span id="dashQuantiteMajore" class="font-bold text-white">0h</span></div>
+                            <div class="text-right">Taux : <span id="dashValTauxMajore" class="font-bold text-white">0 €</span></div>
+                        </div>
+                    </div>
+
+                    <!-- ENTRETIEN -->
+                    <div id="blockEntretien" class="glass-card rounded-xl p-3.5 border-l-4 border-l-emerald-500">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-bold text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Indemnités d'Entretien
+                            </label>
+                            <span id="totalEntretien" class="text-sm font-black text-emerald-100">0,00 €</span>
+                        </div>
+                        <div id="detailsEntretienDashboard" class="text-[11px] text-slate-400 space-y-0.5 pt-1 border-t border-white/5 mt-1"></div>
+                    </div>
+
+                    <!-- REPAS & GOÛTERS -->
+                    <div id="blockRepas" class="glass-card rounded-xl p-3.5 border-l-4 border-l-amber-500">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-bold text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Repas & Collations
+                            </label>
+                            <span id="totalRepas" class="text-sm font-black text-amber-100">0,00 €</span>
+                        </div>
+                        <div id="detailsRepasDashboard" class="text-[11px] text-slate-400 space-y-0.5 pt-1 border-t border-white/5 mt-1"></div>
+                    </div>
+
+                    <!-- COTISATIONS SOCIALES -->
+                    <div id="blockCotisationsDashboard" class="glass-card rounded-xl p-3.5 border-l-4 border-l-red-500 hidden">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-bold text-red-300 uppercase tracking-wide flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Cotisations Sociales
+                            </label>
+                            <span id="totalCotisations" class="text-sm font-black text-red-100">0,00 €</span>
+                        </div>
+                        <div id="detailsCotisationsDashboard" class="text-[11px] text-slate-400 space-y-0.5 pt-1 border-t border-white/5 mt-1"></div>
+                    </div>
+                </div>
+
+                <!-- Grand Bloc Total Global -->
+                <div class="glass-card rounded-2xl p-5 bg-gradient-to-b from-slate-900/90 via-indigo-950/40 to-slate-950/90 text-center border border-cyan-500/20 shadow-xl relative">
+                    <p class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest mb-1">Coût Total Net Estimé</p>
+                    <p class="text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-indigo-200">
+                        <span id="totalGeneral">0,00</span> €
+                    </p>
+                    <div id="mentionLegaleCotisations" class="text-[10px] mt-2 font-bold uppercase tracking-wider py-1 rounded-lg"></div>
+                </div>
+            </div>
+
+            <!-- ================= ONGLET 2 : CONFIGURATION ================= -->
+            <div id="tabSettings" class="space-y-5 hidden">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="text-[10px] text-purple-400 font-bold uppercase tracking-widest">Fiche Profil</span>
+                        <h2 class="text-xl font-black tracking-tight">Configuration</h2>
+                    </div>
+                    <button onclick="creerNouvelEnfant()" class="bg-cyan-500 hover:bg-cyan-600 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-lg active:scale-95">
+                        ➕ Ajouter Enfant
+                    </button>
+                </div>
+
+                <!-- Profil -->
+                <div class="glass-card rounded-2xl p-4 space-y-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300">👥 Profil Actif</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] text-slate-400 block mb-1">Prénom de l'enfant</label>
+                            <input type="text" id="paramNomEnfant" class="w-full glass-input px-3 py-1.5 rounded-xl text-sm font-semibold" oninput="sauvegarderProfilActif()">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400 block mb-1">Nom de la Nounou</label>
+                            <input type="text" id="paramNomNounou" class="w-full glass-input px-3 py-1.5 rounded-xl text-sm font-semibold" oninput="sauvegarderProfilActif()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GRILLE TARIFAIRE AVEC MAJORATION DYNAMIQUE -->
+                <div class="glass-card rounded-2xl p-4 space-y-4">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300">💰 Grille Tarifaire</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[11px] text-slate-400 block mb-1">Taux horaire net (€)</label>
+                            <input type="number" id="paramTauxNormal" step="0.01" class="w-full glass-input px-3 py-1.5 rounded-xl text-sm font-bold" oninput="recalculerTauxMajoreDepuisPct()">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400 block mb-1">Taux majoré net (€)</label>
+                            <input type="number" id="paramTauxMajore" step="0.01" class="w-full glass-input px-3 py-1.5 rounded-xl text-sm font-bold text-purple-300" oninput="sauvegarderProfilActif()">
+                        </div>
+                    </div>
+                    <div class="p-2 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                        <span class="text-[11px] text-slate-400">Majoration légale / contractuelle :</span>
+                        <div class="flex items-center gap-1 w-20">
+                            <input type="number" id="paramMajorationPct" value="10" class="w-full glass-input px-2 py-1 rounded-lg text-xs text-center font-bold" oninput="recalculerTauxMajoreDepuisPct()">
+                            <span class="text-xs text-slate-400">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MENSUALISATION -->
+                <div class="glass-card rounded-2xl p-4 space-y-4 border border-purple-500/20 bg-purple-950/10">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300">⚖️ Lissage Mensualisé</h3>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Applique un forfait d'heures fixe par mois.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="paramToggleMensualise" class="sr-only peer" onchange="sauvegarderProfilActif()">
+                            <div class="w-11 h-6 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                        </label>
+                    </div>
+                    <div id="champsMensualisation" class="grid grid-cols-2 gap-3 pt-2 border-t border-white/5 hidden">
+                        <div>
+                            <label class="text-[10px] text-purple-300 block mb-1 font-bold">Heures Normales / mois</label>
+                            <input type="number" id="paramHrsMensuNormales" class="w-full glass-input px-3 py-1.5 rounded-xl text-sm font-bold" oninput="sauvegarderProfilActif()">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-purple-300 block mb-1 font-bold">Heures Majorées / mois</label>
+                            <input type="number" id="paramHrsMensuMajorees" class="w-full glass-input px-3 py-1.5 rounded-xl text-sm font-bold" oninput="sauvegarderProfilActif()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- INDEMNITÉS D'ENTRETIEN -->
+                <div class="glass-card rounded-2xl p-4 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-300">🏡 Indemnités d'Entretien</h3>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="paramToggleEntretien" class="sr-only peer" onchange="sauvegarderProfilActif()">
+                            <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                    
+                    <div id="contentConfigurationEntretien" class="space-y-3 pt-2 border-t border-white/5">
+                        <div>
+                            <label class="text-[11px] text-slate-400 block mb-1">Tarif de base / jour classique (€)</label>
+                            <input type="number" id="paramTauxEntretien" step="0.01" class="w-full glass-input px-3 py-1.5 rounded-xl text-sm" oninput="sauvegarderProfilActif()">
+                        </div>
+                        
+                        <div class="space-y-2 pt-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">⚠️ Exceptions récurrentes</span>
+                                <button onclick="ajouterExceptionEntretien()" class="text-emerald-400 hover:text-emerald-300 text-xs font-bold">+ Ajouter</button>
+                            </div>
+                            <div id="listeExceptionsEntretien" class="space-y-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FRAIS DE REPAS -->
+                <div class="glass-card rounded-2xl p-4 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-amber-300">🍽️ Frais de Repas & Collations</h3>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="paramToggleRepas" class="sr-only peer" onchange="sauvegarderProfilActif()">
+                            <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                        </label>
+                    </div>
+                    
+                    <div id="contentConfigurationRepas" class="space-y-3 pt-2 border-t border-white/5">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Liste des rations payées</span>
+                            <button onclick="ajouterLigneRepas()" class="text-amber-400 hover:text-amber-300 text-xs font-bold">+ Ajouter une ration</button>
+                        </div>
+                        <div id="listeRationsRepas" class="space-y-2"></div>
+                    </div>
+                </div>
+
+                <!-- COTISATIONS SOCIALES -->
+                <div class="glass-card rounded-2xl p-4 space-y-3 border border-red-500/20 bg-red-950/5">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-red-300">📈 Cotisations Sociales</h3>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Calculer et ajouter les charges.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="paramToggleCotisations" class="sr-only peer" onchange="sauvegarderProfilActif()">
+                            <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-500"></div>
+                        </label>
+                    </div>
+
+                    <div id="contentConfigurationCotisations" class="space-y-3 pt-2 border-t border-white/5 hidden">
+                        <div id="blocImportCotisations" class="p-2 rounded-xl bg-white/5 border border-white/5 hidden">
+                            <p class="text-[10px] text-slate-400 mb-1">Copier la configuration d'un autre profil :</p>
+                            <div id="containerBoutonsImport" class="flex flex-wrap gap-1.5"></div>
+                        </div>
+
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Lignes de cotisations</span>
+                            <button onclick="ajouterLigneCotisation()" class="text-red-400 hover:text-red-300 text-xs font-bold">+ Ajouter</button>
+                        </div>
+                        <div id="listeCotisationsSociales" class="space-y-2"></div>
+                    </div>
+                </div>
+
+                <!-- Rythme en mode réel -->
+                <div class="glass-card rounded-2xl p-4 space-y-4">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300">⏱️ Paramètres de calcul au Réel</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-[11px] text-slate-400">Heures de garde / jour</label>
+                                <span id="labelHeuresJour" class="text-xs font-bold text-purple-300">8h</span>
+                            </div>
+                            <input type="range" id="paramHeuresJour" min="1" max="12" class="w-full accent-purple-500 h-1.5 bg-white/10 rounded-lg" oninput="sauvegarderProfilActif()">
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-[11px] text-slate-400">Seuil majoration hebdomadaire</label>
+                                <span id="labelSeuilHebdo" class="text-xs font-bold text-purple-300">45h</span>
+                            </div>
+                            <input type="range" id="paramSeuilHebdo" min="35" max="50" class="w-full accent-purple-500 h-1.5 bg-white/10 rounded-lg" oninput="sauvegarderProfilActif()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center pt-2">
+                    <button onclick="supprimerEnfantActif()" id="btnSupprimerEnfant" class="text-red-400 hover:text-red-300 text-xs font-medium underline">
+                        Supprimer ce profil enfant
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const moisNoms = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+        const joursSemaineNoms = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+        
+        const feries2026 = [
+            "2026-01-01", "2026-04-06", "2026-05-01", "2026-05-08", "2026-05-14", 
+            "2026-05-25", "2026-07-14", "2026-08-15", "2026-11-01", "2026-11-11", "2026-12-25"
+        ];
+
+        let appState = {
+            enfants: [],
+            activeEnfantId: null,
+            moisEnCours: "2026-06"
+        };
+
+        const profilDefaut = (id, prenom) => ({
+            id: id,
+            nomEnfant: prenom,
+            nomNounou: "Nounou",
+            tauxNormal: 4.50,
+            majorationPct: 10,
+            tauxMajore: 4.95,
+            tauxEntretien: 3.80,
+            entretienExceptions: [], 
+            repasList: [
+                { id: 'r1', nom: "Midi", prix: 4.00 },
+                { id: 'r2', nom: "Goûter", prix: 1.50 }
+            ],
+            heuresJour: 8,
+            seuilHebdo: 45,
+            mensualisationOn: false,
+            mensualiseNormal: 130,
+            mensualiseMajore: 0,
+            entretienOn: true,
+            repasOn: true,
+            cotisationsOn: false,
+            cotisations: [
+                { id: 'c1', nom: "Cotisations Pajemploi", baseType: "net", taux: 22.5 }
+            ],
+            agendaCustom: {}
+        });
+
+        document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+
+        function initApp() {
+            const data = localStorage.getItem('nounoupay_v4_state');
+            if (data) {
+                try { appState = JSON.parse(data); } catch(e) { setupFirstRun(); }
+            } else { setupFirstRun(); }
+            
+            if(!appState.enfants || appState.enfants.length === 0) setupFirstRun();
+
+            document.getElementById('periodePaye').value = appState.moisEnCours;
+            renderTabsEnfants();
+            chargerProfilEnEcran(appState.activeEnfantId);
+        }
+
+        function setupFirstRun() {
+            const idInitial = Date.now();
+            appState.enfants = [profilDefaut(idInitial, "Mon Enfant")];
+            appState.activeEnfantId = idInitial;
+            appState.moisEnCours = "2026-06";
+            sauvegarderTout();
+        }
+
+        function sauvegarderTout() {
+            localStorage.setItem('nounoupay_v4_state', JSON.stringify(appState));
+        }
+
+        function renderTabsEnfants() {
+            const container = document.getElementById('tabsEnfantsContainer');
+            container.innerHTML = '';
+            appState.enfants.forEach(enf => {
+                const estActif = enf.id === appState.activeEnfantId;
+                const btn = document.createElement('button');
+                btn.className = `px-4 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap shrink-0 border select-none ${
+                    estActif ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border-cyan-400/40 shadow-sm' : 'bg-slate-950/40 text-slate-400 border-white/5 hover:text-slate-200'
+                }`;
+                btn.innerText = enf.nomEnfant || "Enfant";
+                btn.onclick = () => {
+                    appState.activeEnfantId = enf.id;
+                    sauvegarderTout();
+                    renderTabsEnfants();
+                    chargerProfilEnEcran(enf.id);
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function creerNouvelEnfant() {
+            const id = Date.now();
+            const nouveau = profilDefaut(id, `Enfant ${appState.enfants.length + 1}`);
+            appState.enfants.push(nouveau);
+            appState.activeEnfantId = id;
+            sauvegarderTout();
+            renderTabsEnfants();
+            chargerProfilEnEcran(id);
+            switchTab('settings');
+        }
+
+        function supprimerEnfantActif() {
+            if (appState.enfants.length <= 1) {
+                alert("Vous devez conserver au moins un profil d'enfant.");
+                return;
+            }
+            if(confirm("Supprimer ce profil enfant ?")) {
+                appState.enfants = appState.enfants.filter(e => e.id !== appState.activeEnfantId);
+                appState.activeEnfantId = appState.enfants[0].id;
+                sauvegarderTout();
+                renderTabsEnfants();
+                chargerProfilEnEcran(appState.activeEnfantId);
+            }
+        }
+
+        function getEnfantActif() {
+            return appState.enfants.find(e => e.id === appState.activeEnfantId);
+        }
+
+        function chargerProfilEnEcran(id) {
+            const enf = getEnfantActif();
+            if (!enf) return;
+
+            document.getElementById('paramNomEnfant').value = enf.nomEnfant || '';
+            document.getElementById('paramNomNounou').value = enf.nomNounou || '';
+            document.getElementById('paramTauxNormal').value = enf.tauxNormal;
+            document.getElementById('paramMajorationPct').value = enf.majorationPct !== undefined ? enf.majorationPct : 10;
+            document.getElementById('paramTauxMajore').value = enf.tauxMajore;
+            document.getElementById('paramTauxEntretien').value = enf.tauxEntretien;
+            document.getElementById('paramHeuresJour').value = enf.heuresJour;
+            document.getElementById('paramSeuilHebdo').value = enf.seuilHebdo;
+            
+            document.getElementById('labelHeuresJour').innerText = enf.heuresJour + "h";
+            document.getElementById('labelSeuilHebdo').innerText = enf.seuilHebdo + "h";
+
+            document.getElementById('paramToggleEntretien').checked = enf.entretienOn !== false;
+            document.getElementById('paramToggleRepas').checked = enf.repasOn !== false;
+            document.getElementById('paramToggleCotisations').checked = !!enf.cotisationsOn;
+
+            document.getElementById('paramToggleMensualise').checked = enf.mensualisationOn;
+            document.getElementById('paramHrsMensuNormales').value = enf.mensualiseNormal;
+            document.getElementById('paramHrsMensuMajorees').value = enf.mensualiseMajore;
+
+            document.getElementById('champsMensualisation').classList.toggle('hidden', !enf.mensualisationOn);
+            document.getElementById('contentConfigurationEntretien').classList.toggle('hidden', enf.entretienOn === false);
+            document.getElementById('contentConfigurationRepas').classList.toggle('hidden', enf.repasOn === false);
+            document.getElementById('contentConfigurationCotisations').classList.toggle('hidden', !enf.cotisationsOn);
+
+            renderListeExceptionsEntretien(enf);
+            renderListeRationsRepas(enf);
+            renderListeCotisationsSociales(enf);
+            renderImportCotisationsOutil(enf);
+
+            document.getElementById('btnSupprimerEnfant').style.display = appState.enfants.length > 1 ? 'inline-block' : 'none';
+            mettreAJourDateVisuelle();
+        }
+
+        function recalculerTauxMajoreSinceNormal() {
+            const enf = getEnfantActif();
+            const tNormal = parseFloat(document.getElementById('paramTauxNormal').value) || 0;
+            const pct = parseFloat(document.getElementById('paramMajorationPct').value) || 0;
+            const tMajore = tNormal * (1 + (pct / 100));
+            document.getElementById('paramTauxMajore').value = tMajore.toFixed(2);
+        }
+
+        function recalculerTauxMajoreDepuisPct() {
+            recalculerTauxMajoreSinceNormal();
+            sauvegarderProfilActif();
+        }
+
+        function sauvegarderProfilActif() {
+            const enf = getEnfantActif();
+            if(!enf) return;
+
+            enf.nomEnfant = document.getElementById('paramNomEnfant').value;
+            enf.nomNounou = document.getElementById('paramNomNounou').value;
+            enf.tauxNormal = parseFloat(document.getElementById('paramTauxNormal').value) || 0;
+            enf.majorationPct = parseFloat(document.getElementById('paramMajorationPct').value) || 0;
+            enf.tauxMajore = parseFloat(document.getElementById('paramTauxMajore').value) || 0;
+            enf.tauxEntretien = parseFloat(document.getElementById('paramTauxEntretien').value) || 0;
+            enf.heuresJour = parseInt(document.getElementById('paramHeuresJour').value) || 8;
+            enf.seuilHebdo = parseInt(document.getElementById('paramSeuilHebdo').value) || 45;
+            
+            enf.entretienOn = document.getElementById('paramToggleEntretien').checked;
+            enf.repasOn = document.getElementById('paramToggleRepas').checked;
+            enf.cotisationsOn = document.getElementById('paramToggleCotisations').checked;
+
+            enf.mensualisationOn = document.getElementById('paramToggleMensualise').checked;
+            enf.mensualiseNormal = parseFloat(document.getElementById('paramHrsMensuNormales').value) || 0;
+            enf.mensualiseMajore = parseFloat(document.getElementById('paramHrsMensuMajorees').value) || 0;
+
+            document.getElementById('labelHeuresJour').innerText = enf.heuresJour + "h";
+            document.getElementById('labelSeuilHebdo').innerText = enf.seuilHebdo + "h";
+
+            document.getElementById('champsMensualisation').classList.toggle('hidden', !enf.mensualisationOn);
+            document.getElementById('contentConfigurationEntretien').classList.toggle('hidden', enf.entretienOn === false);
+            document.getElementById('contentConfigurationRepas').classList.toggle('hidden', enf.repasOn === false);
+            document.getElementById('contentConfigurationCotisations').classList.toggle('hidden', !enf.cotisationsOn);
+
+            sauvegarderTout();
+            renderTabsEnfants();
+            mettreAJourCompteurs();
+        }
+
+        // --- GESTION DES REPAS (SÉCURISÉ CONTRE LE DÉBORDEMENT) ---
+        function renderListeRationsRepas(enf) {
+            const container = document.getElementById('listeRationsRepas');
+            container.innerHTML = '';
+            if(!enf.repasList) enf.repasList = [];
+            
+            enf.repasList.forEach((repas) => {
+                const div = document.createElement('div');
+                div.className = "flex gap-2 items-center bg-white/5 p-2 rounded-xl border border-white/5 w-full overflow-hidden";
+                div.innerHTML = `
+                    <input type="text" value="${repas.nom}" placeholder="Nom" class="flex-1 min-w-0 glass-input px-2 py-1 rounded-lg text-xs" oninput="modifierLigneRepas('${repas.id}', 'nom', this.value)">
+                    <input type="number" step="0.01" value="${repas.prix}" placeholder="Prix" class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-xs text-right" oninput="modifierLigneRepas('${repas.id}', 'prix', this.value)">
+                    <button onclick="supprimerLigneRepas('${repas.id}')" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function ajouterLigneRepas() {
+            const enf = getEnfantActif();
+            if(!enf.repasList) enf.repasList = [];
+            enf.repasList.push({ id: 'r_' + Date.now(), nom: 'Nouvelle Ration', prix: 2.00 });
+            sauvegarderTout();
+            renderListeRationsRepas(enf);
+            mettreAJourCompteurs();
+        }
+
+        function modifierLigneRepas(id, prop, value) {
+            const enf = getEnfantActif();
+            const item = enf.repasList.find(r => r.id === id);
+            if(item) {
+                if(prop === 'prix') item[prop] = parseFloat(value) || 0;
+                else item[prop] = value;
+            }
+            sauvegarderTout();
+            mettreAJourCompteurs();
+        }
+
+        function supprimerLigneRepas(id) {
+            const enf = getEnfantActif();
+            enf.repasList = enf.repasList.filter(r => r.id !== id);
+            sauvegarderTout();
+            renderListeRationsRepas(enf);
+            mettreAJourCompteurs();
+        }
+
+        // --- GESTION DES EXCEPTIONS D'ENTRETIEN (SÉCURISÉ CONTRE LE DÉBORDEMENT) ---
+        function renderListeExceptionsEntretien(enf) {
+            const container = document.getElementById('listeExceptionsEntretien');
+            container.innerHTML = '';
+            if(!enf.entretienExceptions) enf.entretienExceptions = [];
+
+            enf.entretienExceptions.forEach(exc => {
+                const div = document.createElement('div');
+                div.className = "flex gap-2 items-center bg-white/5 p-2 rounded-xl border border-white/5 w-full overflow-hidden";
+                
+                let optionsJours = '';
+                joursSemaineNoms.forEach((j, idx) => {
+                    optionsJours += `<option value="${idx}" ${exc.jour === idx ? 'selected' : ''}>Chaque ${j}</option>`;
+                });
+
+                div.innerHTML = `
+                    <select class="flex-1 min-w-0 glass-input px-2 py-1 rounded-lg text-xs bg-slate-900 text-white" onchange="modifierExceptionEntretien('${exc.id}', 'jour', this.value)">
+                        ${optionsJours}
+                    </select>
+                    <input type="number" step="0.01" value="${exc.taux}" placeholder="Tarif" class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-xs text-right" oninput="modifierExceptionEntretien('${exc.id}', 'taux', this.value)">
+                    <button onclick="supprimerExceptionEntretien('${exc.id}')" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function ajouterExceptionEntretien() {
+            const enf = getEnfantActif();
+            if(!enf.entretienExceptions) enf.entretienExceptions = [];
+            enf.entretienExceptions.push({ id: 'e_' + Date.now(), jour: 5, taux: 2.50 });
+            sauvegarderTout();
+            renderListeExceptionsEntretien(enf);
+            mettreAJourCompteurs();
+        }
+
+        function modifierExceptionEntretien(id, prop, value) {
+            const enf = getEnfantActif();
+            const item = enf.entretienExceptions.find(e => e.id === id);
+            if(item) {
+                item[prop] = parseFloat(value);
+            }
+            sauvegarderTout();
+            mettreAJourCompteurs();
+        }
+
+        function supprimerExceptionEntretien(id) {
+            const enf = getEnfantActif();
+            enf.entretienExceptions = enf.entretienExceptions.filter(e => e.id !== id);
+            sauvegarderTout();
+            renderListeExceptionsEntretien(enf);
+            mettreAJourCompteurs();
+        }
+
+        // --- GESTION DES COTISATIONS SOCIALES (SÉCURISÉ CONTRE LE DÉBORDEMENT) ---
+        function renderListeCotisationsSociales(enf) {
+            const container = document.getElementById('listeCotisationsSociales');
+            container.innerHTML = '';
+            if(!enf.cotisations) enf.cotisations = [];
+
+            enf.cotisations.forEach(cot => {
+                const div = document.createElement('div');
+                div.className = "p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-2 w-full overflow-hidden";
+                div.innerHTML = `
+                    <input type="text" value="${cot.nom}" placeholder="Nom de la charge" class="w-full glass-input px-2 py-1 rounded-lg text-xs" oninput="modifierLigneCotisation('${cot.id}', 'nom', this.value)">
+                    <div class="flex gap-2 items-center w-full">
+                        <select class="flex-1 min-w-0 glass-input px-2 py-1 rounded-lg text-xs bg-slate-900 text-white" onchange="modifierLigneCotisation('${cot.id}', 'baseType', this.value)">
+                            <option value="net" ${cot.baseType === 'net' ? 'selected' : ''}>% du Net (Total)</option>
+                            <option value="heure" ${cot.baseType === 'heure' ? 'selected' : ''}>€/Heure (Total)</option>
+                            <option value="net_maj" ${cot.baseType === 'net_maj' ? 'selected' : ''}>% du Net (Heures Sup.)</option>
+                            <option value="heure_maj" ${cot.baseType === 'heure_maj' ? 'selected' : ''}>€/Heure (Heures Sup.)</option>
+                        </select>
+                        <input type="number" step="0.01" value="${cot.taux}" class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-xs text-right font-bold text-red-300" oninput="modifierLigneCotisation('${cot.id}', 'taux', this.value)">
+                        <button onclick="supprimerLigneCotisation('${cot.id}')" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function ajouterLigneCotisation() {
+            const enf = getEnfantActif();
+            if(!enf.cotisations) enf.cotisations = [];
+            enf.cotisations.push({ id: 'c_' + Date.now(), nom: 'Nouvelle charge', baseType: 'net', taux: 1.5 });
+            sauvegarderTout();
+            renderListeCotisationsSociales(enf);
+            mettreAJourCompteurs();
+        }
+
+        function modifierLigneCotisation(id, prop, value) {
+            const enf = getEnfantActif();
+            const item = enf.cotisations.find(c => c.id === id);
+            if(item) {
+                if(prop === 'taux') item[prop] = parseFloat(value) || 0;
+                else item[prop] = value;
+            }
+            sauvegarderTout();
+            mettreAJourCompteurs();
+        }
+
+        function supprimerLigneCotisation(id) {
+            const enf = getEnfantActif();
+            enf.cotisations = enf.cotisations.filter(c => c.id !== id);
+            sauvegarderTout();
+            renderListeCotisationsSociales(enf);
+            mettreAJourCompteurs();
+        }
+
+        function renderImportCotisationsOutil(enfActif) {
+            const containerBtn = document.getElementById('containerBoutonsImport');
+            const block = document.getElementById('blocImportCotisations');
+            containerBtn.innerHTML = '';
+
+            const autresEnfants = appState.enfants.filter(e => e.id !== enfActif.id && e.cotisations && e.cotisations.length > 0);
+            
+            if(autresEnfants.length > 0) {
+                block.classList.remove('hidden');
+                autresEnfants.forEach(autre => {
+                    const btn = document.createElement('button');
+                    btn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 text-[10px] font-bold px-2.5 py-1 rounded-lg transition active:scale-95";
+                    btn.innerText = `Importer de "${autre.nomEnfant}"`;
+                    btn.onclick = () => {
+                        if(confirm(`Écraser les cotisations de ${enfActif.nomEnfant} pour cloner celles de ${autre.nomEnfant} ?`)) {
+                            enfActif.cotisations = JSON.parse(JSON.stringify(autre.cotisations));
+                            sauvegarderTout();
+                            renderListeCotisationsSociales(enfActif);
+                            mettreAJourCompteurs();
+                        }
+                    };
+                    containerBtn.appendChild(btn);
+                });
+            } else {
+                block.classList.add('hidden');
+            }
+        }
+
+        // --- CALCULS ET CALENDRIER ENGINE ---
+        function changerMoisGlobal(valeurMois) {
+            if(!valeurMois) return;
+            appState.moisEnCours = valeurMois;
+            sauvegarderTout();
+            mettreAJourDateVisuelle();
+        }
+
+        function mettreAJourDateVisuelle() {
+            const parts = appState.moisEnCours.split('-');
+            const annee = parseInt(parts[0]);
+            const moisIndex = parseInt(parts[1]) - 1;
+            document.getElementById('labelPeriode').innerText = moisNoms[moisIndex] + " " + annee;
+            genererCalendrier(annee, moisIndex);
+        }
+
+        function genererCalendrier(annee, moisIndex) {
+            const grid = document.getElementById('calendrierGrid');
+            grid.innerHTML = ''; 
+
+            const joursSemaine = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+            joursSemaine.forEach(j => {
+                const col = document.createElement('div');
+                col.className = "font-bold py-1 text-slate-500";
+                col.innerText = j;
+                grid.appendChild(col);
+            });
+
+            const premierJourDuMois = new Date(annee, moisIndex, 1);
+            let jourDepart = premierJourDuMois.getDay(); 
+            jourDepart = (jourDepart === 0) ? 6 : jourDepart - 1; 
+
+            const totalJoursDansMois = new Date(annee, moisIndex + 1, 0).getDate();
+
+            for (let i = 0; i < jourDepart; i++) {
+                const vide = document.createElement('div');
+                vide.className = "p-1.5 opacity-0";
+                grid.appendChild(vide);
+            }
+
+            const enf = getEnfantActif();
+
+            for (let jour = 1; jour <= totalJoursDansMois; jour++) {
+                const dateCourante = new Date(annee, moisIndex, jour);
+                const dayOfWeek = dateCourante.getDay(); 
+                const mStr = String(moisIndex + 1).padStart(2, '0');
+                const jStr = String(jour).padStart(2, '0');
+                const dateIsoStr = `${annee}-${mStr}-${jStr}`;
+
+                const estWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+                const estFerie = feries2026.includes(dateIsoStr);
+                
+                const caseJour = document.createElement('div');
+                caseJour.innerText = jour;
+                caseJour.dataset.jour = jour;
+                caseJour.dataset.dateStr = dateIsoStr;
+                caseJour.dataset.dayOfWeek = dayOfWeek;
+
+                let natureBase = "ouvre"; 
+                if (estWeekend) natureBase = "weekend";
+                if (estFerie) natureBase = "ferie";
+                caseJour.dataset.nature = natureBase;
+
+                const etatForce = enf.agendaCustom && enf.agendaCustom[dateIsoStr];
+                let estTravaille = false;
+
+                if (natureBase === "ouvre") {
+                    estTravaille = (typeof etatForce === 'undefined' || etatForce === 'travaill_force');
+                } else {
+                    estTravaille = (etatForce === 'travaill_force');
+                }
+
+                caseJour.dataset.travaille = estTravaille ? "true" : "false";
+                appliquerStyleCase(caseJour);
+
+                caseJour.addEventListener('click', function() {
+                    if (!enf.agendaCustom) enf.agendaCustom = {};
+                    const currentTravaille = this.dataset.travaille === "true";
+                    const newTravaille = !currentTravaille;
+                    this.dataset.travaille = newTravaille ? "true" : "false";
+                    enf.agendaCustom[dateIsoStr] = newTravaille ? "travaill_force" : "deduit_force";
+
+                    sauvegarderTout();
+                    appliquerStyleCase(this);
+                    mettreAJourCompteurs();
+                });
+                
+                grid.appendChild(caseJour);
+            }
+
+            mettreAJourCompteurs();
+        }
+
+        function appliquerStyleCase(el) {
+            const nature = el.dataset.nature;
+            const travaille = el.dataset.travaille === "true";
+            let cls = "p-1.5 rounded-lg font-bold border transition-all duration-150 active:scale-90 select-none cursor-pointer ";
+
+            if (nature === "ferie") {
+                cls += travaille ? "bg-gradient-to-br from-amber-500/40 to-cyan-500/30 text-cyan-200 border-cyan-400/50" : "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm";
+            } else if (nature === "weekend") {
+                cls += travaille ? "bg-indigo-500/30 text-indigo-200 border-indigo-400/40" : "bg-slate-950/20 text-slate-600 border-transparent font-medium";
+            } else {
+                cls += travaille ? "bg-cyan-500/20 text-cyan-200 border-cyan-400/20" : "bg-red-500/20 text-red-300 border-red-500/30 line-through opacity-70";
+            }
+            el.className = cls;
+        }
+
+        function mettreAJourCompteurs() {
+            const enf = getEnfantActif();
+            if(!enf) return;
+
+            const toutesCases = document.querySelectorAll('[data-jour]');
+            let joursGardeReels = 0;
+            
+            let décompteEntretien = {
+                normal: 0,
+                exceptions: {}
+            };
+
+            if(enf.entretienExceptions) {
+                enf.entretienExceptions.forEach(ex => {
+                    décompteEntretien.exceptions[ex.jour] = { count: 0, taux: ex.taux };
+                });
+            }
+
+            toutesCases.forEach(el => {
+                if (el.dataset.travaille === "true") {
+                    joursGardeReels++;
+                    const dWeek = parseInt(el.dataset.dayOfWeek);
+                    
+                    if(enf.entretienOn !== false && décompteEntretien.exceptions[dWeek] !== undefined) {
+                        décompteEntretien.exceptions[dWeek].count++;
+                    } else if (enf.entretienOn !== false) {
+                        décompteEntretien.normal++;
+                    }
+                }
+            });
+
+            document.getElementById('badgeContainer').innerHTML = `<span class="bg-cyan-500/15 text-cyan-300 px-2.5 py-0.5 rounded-full border border-cyan-500/20">${joursGardeReels} Jrs Présence</span>`;
+
+            let totalNormalHours = 0;
+            let totalMajoreHours = 0;
+
+            if (enf.mensualisationOn) {
+                totalNormalHours = enf.mensualiseNormal;
+                totalMajoreHours = enf.mensualiseMajore;
+                document.getElementById('infoModeCalcul').innerText = "🔄 CONTRAT MENSUALISÉ : Heures fixes lissées";
+                document.getElementById('infoModeCalcul').className = "text-center py-1 rounded-lg text-[10px] font-bold tracking-wide bg-purple-500/10 text-purple-300 border border-purple-500/20";
+            } else {
+                document.getElementById('infoModeCalcul').innerText = "📆 CALCUL AU RÉEL : Heures comptées selon le planning";
+                document.getElementById('infoModeCalcul').className = "text-center py-1 rounded-lg text-[10px] font-bold tracking-wide bg-cyan-500/10 text-cyan-300 border border-cyan-500/20";
+
+                const parts = appState.moisEnCours.split('-');
+                const annee = parseInt(parts[0]);
+                const moisIndex = parseInt(parts[1]) - 1;
+                const totalJoursDansMois = new Date(annee, moisIndex + 1, 0).getDate();
+
+                let heuresSemaineEnCours = 0;
+
+                for (let jour = 1; jour <= totalJoursDansMois; jour++) {
+                    const dateCourante = new Date(annee, moisIndex, jour);
+                    const dayOfWeek = dateCourante.getDay(); 
+                    const elJour = document.querySelector(`[data-jour="${jour}"]`);
+                    
+                    if (elJour && elJour.dataset.travaille === "true") {
+                        heuresSemaineEnCours += enf.heuresJour;
+                    }
+
+                    if (dayOfWeek === 0 || jour === totalJoursDansMois) {
+                        if (heuresSemaineEnCours > enf.seuilHebdo) {
+                            totalMajoreHours += (heuresSemaineEnCours - enf.seuilHebdo);
+                            totalNormalHours += enf.seuilHebdo;
+                        } else {
+                            totalNormalHours += heuresSemaineEnCours;
+                        }
+                        heuresSemaineEnCours = 0;
+                    }
+                }
+            }
+
+            document.getElementById('dashQuantiteNormal').innerText = totalNormalHours + " h";
+            document.getElementById('dashValTauxNormal').innerText = enf.tauxNormal.toFixed(2) + " €";
+            document.getElementById('dashQuantiteMajore').innerText = totalMajoreHours + " h";
+            document.getElementById('dashValTauxMajore').innerText = enf.tauxMajore.toFixed(2) + " €";
+            
+            document.getElementById('blockMajore').classList.toggle('hidden', totalMajoreHours <= 0);
+
+            let calculEntretienTotal = 0;
+            let htmlEntretienDetails = '';
+
+            if(enf.entretienOn !== false) {
+                document.getElementById('blockEntretien').classList.remove('hidden');
+                
+                if(décompteEntretien.normal > 0) {
+                    const sousTotalNorm = décompteEntretien.normal * enf.tauxEntretien;
+                    calculEntretienTotal += sousTotalNorm;
+                    htmlEntretienDetails += `<div class="flex justify-between"><span>• Jours normaux : ${décompteEntretien.normal} j × ${enf.tauxEntretien.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotalNorm.toFixed(2)}€</span></div>`;
+                }
+                for (const jourKey in décompteEntretien.exceptions) {
+                    const exc = décompteEntretien.exceptions[jourKey];
+                    if(exc.count > 0) {
+                        const sousTotalExc = exc.count * exc.taux;
+                        calculEntretienTotal += sousTotalExc;
+                        htmlEntretienDetails += `<div class="flex justify-between"><span>• Exceptions (${joursSemaineNoms[jourKey]}s) : ${exc.count} j × ${exc.taux.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotalExc.toFixed(2)}€</span></div>`;
+                    }
+                }
+                if(htmlEntretienDetails === '') {
+                    htmlEntretienDetails = `<div class="text-[10px] italic text-slate-500 text-center">Aucune présence cochée ce mois-ci</div>`;
+                }
+            } else {
+                document.getElementById('blockEntretien').classList.add('hidden');
+            }
+            document.getElementById('detailsEntretienDashboard').innerHTML = htmlEntretienDetails;
+
+            let calculRepasTotal = 0;
+            let htmlRepasDetails = '';
+
+            if(enf.repasOn !== false && enf.repasList && enf.repasList.length > 0) {
+                document.getElementById('blockRepas').classList.remove('hidden');
+                
+                enf.repasList.forEach(ration => {
+                    const sousTotalRation = joursGardeReels * ration.prix;
+                    calculRepasTotal += sousTotalRation;
+                    htmlRepasDetails += `<div class="flex justify-between"><span>• ${ration.nom} : ${joursGardeReels} j × ${ration.prix.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotalRation.toFixed(2)}€</span></div>`;
+                });
+            } else {
+                document.getElementById('blockRepas').classList.add('hidden');
+            }
+            document.getElementById('detailsRepasDashboard').innerHTML = htmlRepasDetails || `<div class="text-[10px] italic text-slate-500 text-center">Aucun repas actif</div>`;
+
+            const salaireNetBaseCalcul = (totalNormalHours * enf.tauxNormal) + (totalMajoreHours * enf.tauxMajore);
+            const totalHeuresCumulees = totalNormalHours + totalMajoreHours;
+
+            let calculCotisationsTotal = 0;
+            let htmlCotisationsDetails = '';
+
+            if(enf.cotisationsOn && enf.cotisations && enf.cotisations.length > 0) {
+                document.getElementById('blockCotisationsDashboard').classList.remove('hidden');
+                
+                enf.cotisations.forEach(cot => {
+                    let chargeLigne = 0;
+                    if(cot.baseType === 'net') {
+                        chargeLigne = salaireNetBaseCalcul * (cot.taux / 100);
+                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${cot.nom} (${cot.taux}% sur Net)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
+                    } else if(cot.baseType === 'heure') {
+                        chargeLigne = totalHeuresCumulees * cot.taux;
+                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${cot.nom} (${cot.taux.toFixed(2)}€/h)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
+                    } else if(cot.baseType === 'net_maj') {
+                        const salaireMajoreBase = totalMajoreHours * enf.tauxMajore;
+                        chargeLigne = salaireMajoreBase * (cot.taux / 100);
+                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${cot.nom} (${cot.taux}% sur Heures Sup.)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
+                    } else if(cot.baseType === 'heure_maj') {
+                        chargeLigne = totalMajoreHours * cot.taux;
+                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${cot.nom} (${cot.taux.toFixed(2)}€/h sur Heures Sup.)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
+                    }
+                    calculCotisationsTotal += chargeLigne;
+                });
+            } else {
+                document.getElementById('blockCotisationsDashboard').classList.add('hidden');
+            }
+            document.getElementById('detailsCotisationsDashboard').innerHTML = htmlCotisationsDetails;
+
+            const totalGeneralFinal = salaireNetBaseCalcul + calculEntretienTotal + calculRepasTotal + calculCotisationsTotal;
+            
+            document.getElementById('totalNormal').innerText = (totalNormalHours * enf.tauxNormal).toFixed(2) + " €";
+            document.getElementById('totalMajore').innerText = (totalMajoreHours * enf.tauxMajore).toFixed(2) + " €";
+            document.getElementById('totalEntretien').innerText = calculEntretienTotal.toFixed(2) + " €";
+            document.getElementById('totalRepas').innerText = calculRepasTotal.toFixed(2) + " €";
+            document.getElementById('totalCotisations').innerText = calculCotisationsTotal.toFixed(2) + " €";
+            
+            document.getElementById('totalGeneral').innerText = totalGeneralFinal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            const mentionDiv = document.getElementById('mentionLegaleCotisations');
+            if(enf.cotisationsOn) {
+                mentionDiv.innerText = "✅ Cotisations sociales incluses (Détail ci-dessus)";
+                mentionDiv.className = "text-[10px] mt-2 font-bold uppercase tracking-wider py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-center";
+            } else {
+                mentionDiv.innerText = "⚠️ Attention : Sommes nettes hors cotisations sociales";
+                mentionDiv.className = "text-[10px] mt-2 font-bold uppercase tracking-wider py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-center";
+            }
+        }
+
+        function switchTab(tabId) {
+            const dash = document.getElementById('tabDashboard');
+            const sett = document.getElementById('tabSettings');
+            const btnDash = document.getElementById('btnNavDashboard');
+            const btnSett = document.getElementById('btnNavSettings');
+
+            if (tabId === 'dashboard') {
+                dash.classList.remove('hidden');
+                sett.classList.add('hidden');
+                btnDash.className = "flex-1 py-2 text-xs font-bold rounded-lg transition-all text-cyan-400 bg-white/10 shadow-sm flex items-center justify-center gap-1.5";
+                btnSett.className = "flex-1 py-2 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-white flex items-center justify-center gap-1.5";
+                mettreAJourCompteurs();
+            } else {
+                dash.classList.add('hidden');
+                sett.classList.remove('hidden');
+                btnDash.className = "flex-1 py-2 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-white flex items-center justify-center gap-1.5";
+                btnSett.className = "flex-1 py-2 text-xs font-bold rounded-lg transition-all text-purple-400 bg-white/10 shadow-sm flex items-center justify-center gap-1.5";
+                renderImportCotisationsOutil(getEnfantActif());
+            }
+        }
+
+        window.onload = function() { initApp(); };
+    </script>
+</body>
+</html>
