@@ -316,7 +316,7 @@
                 </div>
 
                 <!-- Rythme en mode réel -->
-                <div class="glass-card rounded-2xl p-4 space-y-4">
+                <div id="blocParametresReel" class="glass-card rounded-2xl p-4 space-y-4">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300">⏱️ Paramètres de calcul au Réel</h3>
                     <div class="space-y-3">
                         <div>
@@ -349,11 +349,71 @@
     <script>
         const moisNoms = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
         const joursSemaineNoms = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
-        
-        const feries2026 = [
-            "2026-01-01", "2026-04-06", "2026-05-01", "2026-05-08", "2026-05-14", 
-            "2026-05-25", "2026-07-14", "2026-08-15", "2026-11-01", "2026-11-11", "2026-12-25"
-        ];
+
+        // --- ÉCHAPPEMENT HTML (anti-injection sur les champs texte libres) ---
+        function escapeHtml(valeur) {
+            if (valeur === undefined || valeur === null) return '';
+            return String(valeur)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // --- CALCUL DYNAMIQUE DES JOURS FÉRIÉS (toute année, France métropolitaine) ---
+        function calculerDatePaques(annee) {
+            // Algorithme de Meeus/Jones/Butcher (calendrier grégorien)
+            const a = annee % 19;
+            const b = Math.floor(annee / 100);
+            const c = annee % 100;
+            const d = Math.floor(b / 4);
+            const e = b % 4;
+            const f = Math.floor((b + 8) / 25);
+            const g = Math.floor((b - f + 1) / 3);
+            const h = (19 * a + b - d - g + 15) % 30;
+            const i = Math.floor(c / 4);
+            const k = c % 4;
+            const l = (32 + 2 * e + 2 * i - h - k) % 7;
+            const m = Math.floor((a + 11 * h + 22 * l) / 451);
+            const moisPaques = Math.floor((h + l - 7 * m + 114) / 31); // 3 = mars, 4 = avril
+            const jourPaques = ((h + l - 7 * m + 114) % 31) + 1;
+            return new Date(annee, moisPaques - 1, jourPaques);
+        }
+
+        function formatDateIso(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function calculerJoursFeries(annee) {
+            const paques = calculerDatePaques(annee);
+
+            const lundiPaques = new Date(paques);
+            lundiPaques.setDate(lundiPaques.getDate() + 1);
+
+            const ascension = new Date(paques);
+            ascension.setDate(ascension.getDate() + 39);
+
+            const lundiPentecote = new Date(paques);
+            lundiPentecote.setDate(lundiPentecote.getDate() + 50);
+
+            return [
+                `${annee}-01-01`,              // Jour de l'an
+                formatDateIso(lundiPaques),     // Lundi de Pâques
+                `${annee}-05-01`,               // Fête du Travail
+                `${annee}-05-08`,               // Victoire 1945
+                formatDateIso(ascension),       // Ascension
+                formatDateIso(lundiPentecote),  // Lundi de Pentecôte
+                `${annee}-07-14`,               // Fête nationale
+                `${annee}-08-15`,               // Assomption
+                `${annee}-11-01`,               // Toussaint
+                `${annee}-11-11`,               // Armistice
+                `${annee}-12-25`                // Noël
+            ];
+        }
 
         let appState = {
             enfants: [],
@@ -489,6 +549,7 @@
             document.getElementById('paramHrsMensuMajorees').value = enf.mensualiseMajore;
 
             document.getElementById('champsMensualisation').classList.toggle('hidden', !enf.mensualisationOn);
+            document.getElementById('blocParametresReel').classList.toggle('hidden', enf.mensualisationOn);
             document.getElementById('contentConfigurationEntretien').classList.toggle('hidden', enf.entretienOn === false);
             document.getElementById('contentConfigurationRepas').classList.toggle('hidden', enf.repasOn === false);
             document.getElementById('contentConfigurationCotisations').classList.toggle('hidden', !enf.cotisationsOn);
@@ -540,6 +601,7 @@
             document.getElementById('labelSeuilHebdo').innerText = enf.seuilHebdo + "h";
 
             document.getElementById('champsMensualisation').classList.toggle('hidden', !enf.mensualisationOn);
+            document.getElementById('blocParametresReel').classList.toggle('hidden', enf.mensualisationOn);
             document.getElementById('contentConfigurationEntretien').classList.toggle('hidden', enf.entretienOn === false);
             document.getElementById('contentConfigurationRepas').classList.toggle('hidden', enf.repasOn === false);
             document.getElementById('contentConfigurationCotisations').classList.toggle('hidden', !enf.cotisationsOn);
@@ -559,8 +621,8 @@
                 const div = document.createElement('div');
                 div.className = "flex gap-2 items-center bg-white/5 p-2 rounded-xl border border-white/5 w-full overflow-hidden";
                 div.innerHTML = `
-                    <input type="text" value="${repas.nom}" placeholder="Nom" class="flex-1 min-w-0 glass-input px-2 py-1 rounded-lg text-xs" oninput="modifierLigneRepas('${repas.id}', 'nom', this.value)">
-                    <input type="number" step="0.01" value="${repas.prix}" placeholder="Prix" class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-xs text-right" oninput="modifierLigneRepas('${repas.id}', 'prix', this.value)">
+                    <input type="text" value="${escapeHtml(repas.nom)}" placeholder="Nom" class="flex-1 min-w-0 glass-input px-2 py-1 rounded-lg text-xs" oninput="modifierLigneRepas('${repas.id}', 'nom', this.value)">
+                    <input type="number" step="0.01" value="${escapeHtml(repas.prix)}" placeholder="Prix" class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-xs text-right" oninput="modifierLigneRepas('${repas.id}', 'prix', this.value)">
                     <button onclick="supprimerLigneRepas('${repas.id}')" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
                 `;
                 container.appendChild(div);
@@ -614,7 +676,7 @@
                     <select class="flex-1 min-w-0 glass-input px-2 py-1 rounded-lg text-xs bg-slate-900 text-white" onchange="modifierExceptionEntretien('${exc.id}', 'jour', this.value)">
                         ${optionsJours}
                     </select>
-                    <input type="number" step="0.01" value="${exc.taux}" placeholder="Tarif" class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-xs text-right" oninput="modifierExceptionEntretien('${exc.id}', 'taux', this.value)">
+                    <input type="number" step="0.01" value="${escapeHtml(exc.taux)}" placeholder="Tarif" class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-xs text-right" oninput="modifierExceptionEntretien('${exc.id}', 'taux', this.value)">
                     <button onclick="supprimerExceptionEntretien('${exc.id}')" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
                 `;
                 container.appendChild(div);
@@ -658,7 +720,7 @@
                 const div = document.createElement('div');
                 div.className = "p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-2 w-full overflow-hidden";
                 div.innerHTML = `
-                    <input type="text" value="${cot.nom}" placeholder="Nom de la charge" class="w-full glass-input px-2 py-1 rounded-lg text-xs" oninput="modifierLigneCotisation('${cot.id}', 'nom', this.value)">
+                    <input type="text" value="${escapeHtml(cot.nom)}" placeholder="Nom de la charge" class="w-full glass-input px-2 py-1 rounded-lg text-xs" oninput="modifierLigneCotisation('${cot.id}', 'nom', this.value)">
                     <div class="flex gap-2 items-center w-full">
                         <select class="flex-1 min-w-0 glass-input px-2 py-1 rounded-lg text-xs bg-slate-900 text-white" onchange="modifierLigneCotisation('${cot.id}', 'baseType', this.value)">
                             <option value="net" ${cot.baseType === 'net' ? 'selected' : ''}>% du Net (Total)</option>
@@ -666,7 +728,7 @@
                             <option value="net_maj" ${cot.baseType === 'net_maj' ? 'selected' : ''}>% du Net (Heures Sup.)</option>
                             <option value="heure_maj" ${cot.baseType === 'heure_maj' ? 'selected' : ''}>€/Heure (Heures Sup.)</option>
                         </select>
-                        <input type="number" step="0.01" value="${cot.taux}" class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-xs text-right font-bold text-red-300" oninput="modifierLigneCotisation('${cot.id}', 'taux', this.value)">
+                        <input type="number" step="0.01" value="${escapeHtml(cot.taux)}" class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-xs text-right font-bold text-red-300" oninput="modifierLigneCotisation('${cot.id}', 'taux', this.value)">
                         <button onclick="supprimerLigneCotisation('${cot.id}')" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
                     </div>
                 `;
@@ -771,6 +833,7 @@
             }
 
             const enf = getEnfantActif();
+            const joursFeries = calculerJoursFeries(annee);
 
             for (let jour = 1; jour <= totalJoursDansMois; jour++) {
                 const dateCourante = new Date(annee, moisIndex, jour);
@@ -780,7 +843,7 @@
                 const dateIsoStr = `${annee}-${mStr}-${jStr}`;
 
                 const estWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-                const estFerie = feries2026.includes(dateIsoStr);
+                const estFerie = joursFeries.includes(dateIsoStr);
                 
                 const caseJour = document.createElement('div');
                 caseJour.innerText = jour;
@@ -954,7 +1017,7 @@
                 enf.repasList.forEach(ration => {
                     const sousTotalRation = joursGardeReels * ration.prix;
                     calculRepasTotal += sousTotalRation;
-                    htmlRepasDetails += `<div class="flex justify-between"><span>• ${ration.nom} : ${joursGardeReels} j × ${ration.prix.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotalRation.toFixed(2)}€</span></div>`;
+                    htmlRepasDetails += `<div class="flex justify-between"><span>• ${escapeHtml(ration.nom)} : ${joursGardeReels} j × ${ration.prix.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotalRation.toFixed(2)}€</span></div>`;
                 });
             } else {
                 document.getElementById('blockRepas').classList.add('hidden');
@@ -974,17 +1037,17 @@
                     let chargeLigne = 0;
                     if(cot.baseType === 'net') {
                         chargeLigne = salaireNetBaseCalcul * (cot.taux / 100);
-                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${cot.nom} (${cot.taux}% sur Net)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
+                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${escapeHtml(cot.nom)} (${cot.taux}% sur Net)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
                     } else if(cot.baseType === 'heure') {
                         chargeLigne = totalHeuresCumulees * cot.taux;
-                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${cot.nom} (${cot.taux.toFixed(2)}€/h)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
+                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${escapeHtml(cot.nom)} (${cot.taux.toFixed(2)}€/h)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
                     } else if(cot.baseType === 'net_maj') {
                         const salaireMajoreBase = totalMajoreHours * enf.tauxMajore;
                         chargeLigne = salaireMajoreBase * (cot.taux / 100);
-                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${cot.nom} (${cot.taux}% sur Heures Sup.)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
+                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${escapeHtml(cot.nom)} (${cot.taux}% sur Heures Sup.)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
                     } else if(cot.baseType === 'heure_maj') {
                         chargeLigne = totalMajoreHours * cot.taux;
-                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${cot.nom} (${cot.taux.toFixed(2)}€/h sur Heures Sup.)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
+                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${escapeHtml(cot.nom)} (${cot.taux.toFixed(2)}€/h sur Heures Sup.)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
                     }
                     calculCotisationsTotal += chargeLigne;
                 });
