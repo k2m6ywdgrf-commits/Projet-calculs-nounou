@@ -280,19 +280,39 @@
                             <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
                         </label>
                     </div>
-                    
+
                     <div id="contentConfigurationEntretien" class="space-y-3 pt-2 border-t border-white/5">
-                        <div>
-                            <label class="text-[11px] text-slate-400 block mb-1">Tarif de base / jour classique (€)</label>
-                            <input type="number" id="paramTauxEntretien" step="0.01" inputmode="decimal" class="w-full glass-input px-3 py-1.5 rounded-xl text-sm" oninput="sauvegarderProfilActif()">
-                        </div>
-                        
-                        <div class="space-y-2 pt-2">
+                        <!-- Référence URSSAF -->
+                        <div class="bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-3 space-y-3">
                             <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">⚠️ Exceptions récurrentes</span>
-                                <button onclick="ajouterExceptionEntretien()" class="text-emerald-400 hover:text-emerald-300 text-xs font-bold">+ Ajouter</button>
+                                <span class="text-[10px] text-emerald-300 font-bold uppercase tracking-wide">Référence URSSAF</span>
+                                <span id="labelTauxEntretienCalc" class="text-[10px] font-mono bg-emerald-500/20 text-emerald-200 px-2 py-0.5 rounded-full border border-emerald-500/30"></span>
                             </div>
-                            <div id="listeExceptionsEntretien" class="space-y-2"></div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-[10px] text-slate-400 block mb-1.5">Pour 9h de garde</label>
+                                    <div class="flex items-center gap-1.5">
+                                        <input type="number" id="paramEntretienBaseRef" step="0.01" inputmode="decimal" class="flex-1 min-w-0 glass-input px-2 py-1.5 rounded-lg text-sm text-right font-bold" oninput="onEntretienRefChange()">
+                                        <span class="text-[10px] text-slate-400 shrink-0">€</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-slate-400 block mb-1.5">Plancher légal</label>
+                                    <div class="flex items-center gap-1.5">
+                                        <input type="number" id="paramEntretienPlancher" step="0.01" inputmode="decimal" class="flex-1 min-w-0 glass-input px-2 py-1.5 rounded-lg text-sm text-right font-bold" oninput="onEntretienRefChange()">
+                                        <span class="text-[10px] text-slate-400 shrink-0">€/j min.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lignes jours/horaires -->
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Jours & Horaires</span>
+                                <button onclick="ajouterLigneEntretien()" class="text-emerald-400 hover:text-emerald-300 text-xs font-bold">+ Ajouter une ligne</button>
+                            </div>
+                            <div id="listeLignesEntretien" class="space-y-2"></div>
                         </div>
                     </div>
                 </div>
@@ -508,7 +528,13 @@
             majorationPct: 10,
             tauxMajore: 4.95,
             tauxEntretien: 3.80,
-            entretienExceptions: [], 
+            entretienBaseReference: 3.92,
+            entretienPlancherMinimal: 2.65,
+            entretienLignes: [
+                { id: 'el1', jours: [1, 2, 3, 4], heures: 9.5 },
+                { id: 'el2', jours: [5], heures: 8.5 }
+            ],
+            entretienExceptions: [],
             repasList: [
                 { id: 'r1', nom: "Midi", prix: 4.00 },
                 { id: 'r2', nom: "Goûter", prix: 1.50 }
@@ -679,7 +705,8 @@
             document.getElementById('paramTauxNormal').value = enf.tauxNormal;
             document.getElementById('paramMajorationPct').value = enf.majorationPct !== undefined ? enf.majorationPct : 10;
             document.getElementById('paramTauxMajore').value = enf.tauxMajore;
-            document.getElementById('paramTauxEntretien').value = enf.tauxEntretien;
+            document.getElementById('paramEntretienBaseRef').value = enf.entretienBaseReference !== undefined ? enf.entretienBaseReference : 3.92;
+            document.getElementById('paramEntretienPlancher').value = enf.entretienPlancherMinimal !== undefined ? enf.entretienPlancherMinimal : 2.65;
             document.getElementById('paramHeuresJour').value = enf.heuresJour;
             document.getElementById('paramSeuilHebdo').value = enf.seuilHebdo;
             
@@ -704,7 +731,7 @@
             document.getElementById('contentConfigurationAcomptes').classList.toggle('hidden', !enf.acomptesOn);
             document.getElementById('contentConfigurationCotisations').classList.toggle('hidden', !enf.cotisationsOn);
 
-            renderListeExceptionsEntretien(enf);
+            renderListeLignesEntretien(enf);
             renderListeRationsRepas(enf);
             renderListeKmTrajets(enf);
             renderListeCotisationsSociales(enf);
@@ -736,7 +763,8 @@
             enf.tauxNormal = parseFloat(document.getElementById('paramTauxNormal').value) || 0;
             enf.majorationPct = parseFloat(document.getElementById('paramMajorationPct').value) || 0;
             enf.tauxMajore = parseFloat(document.getElementById('paramTauxMajore').value) || 0;
-            enf.tauxEntretien = parseFloat(document.getElementById('paramTauxEntretien').value) || 0;
+            enf.entretienBaseReference = parseFloat(document.getElementById('paramEntretienBaseRef').value) || 3.92;
+            enf.entretienPlancherMinimal = parseFloat(document.getElementById('paramEntretienPlancher').value) || 2.65;
             enf.heuresJour = parseInt(document.getElementById('paramHeuresJour').value) || 8;
             enf.seuilHebdo = parseInt(document.getElementById('paramSeuilHebdo').value) || 45;
             
@@ -885,56 +913,104 @@
             document.getElementById('inputAcompteMois').value = valeurMois ? valeurMois : '';
         }
 
-        // --- GESTION DES EXCEPTIONS D'ENTRETIEN (SÉCURISÉ CONTRE LE DÉBORDEMENT) ---
-        function renderListeExceptionsEntretien(enf) {
-            const container = document.getElementById('listeExceptionsEntretien');
-            container.innerHTML = '';
-            if(!enf.entretienExceptions) enf.entretienExceptions = [];
+        // --- GESTION DES LIGNES D'ENTRETIEN (base légale × heures, par jours sélectionnés) ---
+        const JOURS_SEMAINE_BTN = [
+            { label: 'L', idx: 1 }, { label: 'M', idx: 2 }, { label: 'M', idx: 3 },
+            { label: 'J', idx: 4 }, { label: 'V', idx: 5 }, { label: 'S', idx: 6 }, { label: 'D', idx: 0 }
+        ];
 
-            enf.entretienExceptions.forEach(exc => {
+        function renderListeLignesEntretien(enf) {
+            const container = document.getElementById('listeLignesEntretien');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!enf.entretienLignes) enf.entretienLignes = [];
+
+            const baseRef = enf.entretienBaseReference !== undefined ? enf.entretienBaseReference : 3.92;
+            const plancher = enf.entretienPlancherMinimal !== undefined ? enf.entretienPlancherMinimal : 2.65;
+            const tauxHoraire = baseRef / 9;
+
+            const labelCalc = document.getElementById('labelTauxEntretienCalc');
+            if (labelCalc) labelCalc.textContent = `Taux : ${tauxHoraire.toFixed(4)} €/h`;
+
+            if (enf.entretienLignes.length === 0) {
+                container.innerHTML = `<p class="text-[10px] italic text-slate-500 text-center py-2">Aucune ligne configurée. Cliquez sur "+ Ajouter une ligne".</p>`;
+                return;
+            }
+
+            enf.entretienLignes.forEach(ligne => {
+                const h = ligne.heures || 0;
+                const tauxCalcule = h > 0 ? Math.max(plancher, h * tauxHoraire) : 0;
                 const div = document.createElement('div');
-                div.className = "flex gap-2 items-center bg-white/5 p-2 rounded-xl border border-white/5 w-full overflow-hidden";
-                
-                let optionsJours = '';
-                joursSemaineNoms.forEach((j, idx) => {
-                    optionsJours += `<option value="${idx}" ${exc.jour === idx ? 'selected' : ''}>Chaque ${j}</option>`;
-                });
+                div.className = "p-3 rounded-xl bg-white/5 border border-white/5 space-y-2.5 w-full overflow-hidden";
+
+                const boutonsJours = JOURS_SEMAINE_BTN.map(j => {
+                    const actif = ligne.jours && ligne.jours.includes(j.idx);
+                    return `<button onclick="toggleJourLigne('${ligne.id}', ${j.idx})"
+                        class="flex-1 h-8 rounded-lg text-[11px] font-bold border transition-all active:scale-90 ${actif ? 'bg-emerald-500/30 text-emerald-200 border-emerald-400/50' : 'bg-white/5 text-slate-500 border-white/10 hover:text-slate-300 hover:border-white/20'}">${j.label}</button>`;
+                }).join('');
 
                 div.innerHTML = `
-                    <select class="flex-1 min-w-0 glass-input px-2 py-1 rounded-lg text-xs bg-slate-900 text-white" onchange="modifierExceptionEntretien('${exc.id}', 'jour', this.value)">
-                        ${optionsJours}
-                    </select>
-                    <input type="number" step="0.01" value="${escapeHtml(exc.taux)}" placeholder="Tarif" inputmode="decimal" class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-xs text-right" oninput="modifierExceptionEntretien('${exc.id}', 'taux', this.value)">
-                    <button onclick="supprimerExceptionEntretien('${exc.id}')" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
+                    <div class="flex gap-1">${boutonsJours}</div>
+                    <div class="flex items-center gap-2 pt-0.5">
+                        <label class="text-[10px] text-slate-400 shrink-0">Heures / jour</label>
+                        <input type="number" step="0.5" min="0.5" max="24" value="${escapeHtml(ligne.heures)}" inputmode="decimal"
+                            class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-sm text-center font-bold"
+                            oninput="modifierLigneEntretien('${ligne.id}', 'heures', this.value)">
+                        <div class="flex-1 text-right">
+                            <span class="text-sm text-emerald-300 font-black">= ${tauxCalcule.toFixed(2)} €/j</span>
+                        </div>
+                        <button onclick="supprimerLigneEntretien('${ligne.id}')" class="text-slate-600 hover:text-red-400 text-sm px-1 transition-colors shrink-0">✕</button>
+                    </div>
                 `;
                 container.appendChild(div);
             });
         }
 
-        function ajouterExceptionEntretien() {
+        function onEntretienRefChange() {
+            sauvegarderProfilActif();
+            renderListeLignesEntretien(getEnfantActif());
+        }
+
+        function ajouterLigneEntretien() {
             const enf = getEnfantActif();
-            if(!enf.entretienExceptions) enf.entretienExceptions = [];
-            enf.entretienExceptions.push({ id: 'e_' + Date.now(), jour: 5, taux: 2.50 });
+            if (!enf.entretienLignes) enf.entretienLignes = [];
+            enf.entretienLignes.push({ id: 'el_' + Date.now(), jours: [], heures: 8 });
             sauvegarderTout();
-            renderListeExceptionsEntretien(enf);
+            renderListeLignesEntretien(enf);
             mettreAJourCompteurs();
         }
 
-        function modifierExceptionEntretien(id, prop, value) {
+        function modifierLigneEntretien(id, prop, value) {
             const enf = getEnfantActif();
-            const item = enf.entretienExceptions.find(e => e.id === id);
-            if(item) {
-                item[prop] = parseFloat(value);
+            if (!enf.entretienLignes) return;
+            const ligne = enf.entretienLignes.find(l => l.id === id);
+            if (ligne && prop === 'heures') ligne.heures = parseFloat(value) || 0;
+            sauvegarderTout();
+            renderListeLignesEntretien(enf);
+            mettreAJourCompteurs();
+        }
+
+        function supprimerLigneEntretien(id) {
+            const enf = getEnfantActif();
+            if (!enf.entretienLignes) return;
+            enf.entretienLignes = enf.entretienLignes.filter(l => l.id !== id);
+            sauvegarderTout();
+            renderListeLignesEntretien(enf);
+            mettreAJourCompteurs();
+        }
+
+        function toggleJourLigne(ligneId, jour) {
+            const enf = getEnfantActif();
+            if (!enf.entretienLignes) return;
+            const ligne = enf.entretienLignes.find(l => l.id === ligneId);
+            if (ligne) {
+                if (!ligne.jours) ligne.jours = [];
+                const idx = ligne.jours.indexOf(jour);
+                if (idx >= 0) ligne.jours.splice(idx, 1);
+                else ligne.jours.push(jour);
             }
             sauvegarderTout();
-            mettreAJourCompteurs();
-        }
-
-        function supprimerExceptionEntretien(id) {
-            const enf = getEnfantActif();
-            enf.entretienExceptions = enf.entretienExceptions.filter(e => e.id !== id);
-            sauvegarderTout();
-            renderListeExceptionsEntretien(enf);
+            renderListeLignesEntretien(enf);
             mettreAJourCompteurs();
         }
 
@@ -1137,26 +1213,25 @@
             const toutesCases = document.querySelectorAll('[data-jour]');
             let joursGardeReels = 0;
             
-            let décompteEntretien = {
-                normal: 0,
-                exceptions: {}
-            };
-
-            if(enf.entretienExceptions) {
-                enf.entretienExceptions.forEach(ex => {
-                    décompteEntretien.exceptions[ex.jour] = { count: 0, taux: ex.taux };
+            // Comptage par ligne d'entretien (base légale × heures, par jours sélectionnés)
+            let entretienParLigne = {};
+            if (enf.entretienOn !== false && enf.entretienLignes) {
+                enf.entretienLignes.forEach(ligne => {
+                    entretienParLigne[ligne.id] = { count: 0, heures: ligne.heures || 0 };
                 });
             }
 
             toutesCases.forEach(el => {
                 if (el.dataset.travaille === "true") {
                     joursGardeReels++;
-                    const dWeek = parseInt(el.dataset.dayOfWeek);
-                    
-                    if(enf.entretienOn !== false && décompteEntretien.exceptions[dWeek] !== undefined) {
-                        décompteEntretien.exceptions[dWeek].count++;
-                    } else if (enf.entretienOn !== false) {
-                        décompteEntretien.normal++;
+                    if (enf.entretienOn !== false && enf.entretienLignes) {
+                        const dWeek = parseInt(el.dataset.dayOfWeek);
+                        for (const ligne of enf.entretienLignes) {
+                            if (ligne.jours && ligne.jours.includes(dWeek)) {
+                                entretienParLigne[ligne.id].count++;
+                                break;
+                            }
+                        }
                     }
                 }
             });
@@ -1215,20 +1290,26 @@
 
             if(enf.entretienOn !== false) {
                 document.getElementById('blockEntretien').classList.remove('hidden');
-                
-                if(décompteEntretien.normal > 0) {
-                    const sousTotalNorm = décompteEntretien.normal * enf.tauxEntretien;
-                    calculEntretienTotal += sousTotalNorm;
-                    htmlEntretienDetails += `<div class="flex justify-between"><span>• Jours normaux : ${décompteEntretien.normal} j × ${enf.tauxEntretien.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotalNorm.toFixed(2)}€</span></div>`;
+                const baseRef = enf.entretienBaseReference !== undefined ? enf.entretienBaseReference : 3.92;
+                const plancher = enf.entretienPlancherMinimal !== undefined ? enf.entretienPlancherMinimal : 2.65;
+                const tauxHoraire = baseRef / 9;
+
+                if (enf.entretienLignes && enf.entretienLignes.length > 0) {
+                    enf.entretienLignes.forEach(ligne => {
+                        const data = entretienParLigne[ligne.id];
+                        if (data && data.count > 0) {
+                            const h = data.heures || 0;
+                            const tauxJour = h > 0 ? Math.max(plancher, h * tauxHoraire) : 0;
+                            const sousTotal = data.count * tauxJour;
+                            calculEntretienTotal += sousTotal;
+                            const joursLabel = (ligne.jours || [])
+                                .map(j => joursSemaineNoms[j] ? joursSemaineNoms[j].slice(0, 3) : '')
+                                .join('/');
+                            htmlEntretienDetails += `<div class="flex justify-between"><span>• ${joursLabel} (${h}h) : ${data.count} j × ${tauxJour.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotal.toFixed(2)}€</span></div>`;
+                        }
+                    });
                 }
-                for (const jourKey in décompteEntretien.exceptions) {
-                    const exc = décompteEntretien.exceptions[jourKey];
-                    if(exc.count > 0) {
-                        const sousTotalExc = exc.count * exc.taux;
-                        calculEntretienTotal += sousTotalExc;
-                        htmlEntretienDetails += `<div class="flex justify-between"><span>• Exceptions (${joursSemaineNoms[jourKey]}s) : ${exc.count} j × ${exc.taux.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotalExc.toFixed(2)}€</span></div>`;
-                    }
-                }
+
                 if(htmlEntretienDetails === '') {
                     htmlEntretienDetails = `<div class="text-[10px] italic text-slate-500 text-center">Aucune présence cochée ce mois-ci</div>`;
                 }
