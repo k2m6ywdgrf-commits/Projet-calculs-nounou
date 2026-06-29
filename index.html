@@ -66,16 +66,16 @@
                     <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Suivi de Garde</span>
                     <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">NounouPay</h1>
                 </div>
-                <div class="flex flex-col items-end gap-1.5">
-                    <span class="text-[9px] text-slate-500 uppercase tracking-widest font-semibold">Période</span>
-                    <div class="flex items-center gap-1.5">
-                        <button onclick="changerMoisRelative(-1)" class="w-8 h-8 glass-card rounded-xl flex items-center justify-center text-cyan-400 text-lg font-bold border-cyan-500/15 hover:bg-white/10 transition active:scale-90">‹</button>
-                        <div class="glass-card px-3 py-1.5 rounded-xl relative cursor-pointer hover:bg-white/10 transition border-cyan-500/20 min-w-[96px] text-center">
-                            <span id="labelPeriode" class="text-sm font-bold bg-gradient-to-r from-cyan-300 to-indigo-300 bg-clip-text text-transparent whitespace-nowrap pointer-events-none">Juin 2026</span>
-                            <input type="month" id="periodePaye" value="2026-06" class="absolute inset-0 opacity-0 cursor-pointer w-full" onchange="changerMoisGlobal(this.value)">
+                <div class="flex items-center rounded-2xl overflow-hidden glass-card border border-cyan-500/25 shadow-[0_0_16px_rgba(6,182,212,0.1)]">
+                    <button onclick="changerMoisRelative(-1)" class="h-10 w-9 flex items-center justify-center text-cyan-400 hover:bg-white/10 active:bg-cyan-500/20 transition-all active:scale-90 border-r border-white/5 text-lg leading-none">‹</button>
+                    <div class="relative cursor-pointer group min-w-[104px]">
+                        <div class="flex flex-col items-center px-2 py-1.5 group-hover:bg-white/5 transition-colors">
+                            <span class="text-[7.5px] text-cyan-500/60 uppercase tracking-[0.18em] font-bold leading-none mb-1">Période</span>
+                            <span id="labelPeriode" class="text-[13px] font-extrabold bg-gradient-to-r from-cyan-300 to-indigo-300 bg-clip-text text-transparent whitespace-nowrap leading-tight">Juin 2026</span>
                         </div>
-                        <button onclick="changerMoisRelative(1)" class="w-8 h-8 glass-card rounded-xl flex items-center justify-center text-cyan-400 text-lg font-bold border-cyan-500/15 hover:bg-white/10 transition active:scale-90">›</button>
+                        <input type="month" id="periodePaye" value="2026-06" class="absolute inset-0 opacity-0 cursor-pointer w-full" onchange="changerMoisGlobal(this.value)">
                     </div>
+                    <button onclick="changerMoisRelative(1)" class="h-10 w-9 flex items-center justify-center text-cyan-400 hover:bg-white/10 active:bg-cyan-500/20 transition-all active:scale-90 border-l border-white/5 text-lg leading-none">›</button>
                 </div>
             </div>
             <div id="tabsEnfantsContainer" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
@@ -958,10 +958,22 @@
                 const div = document.createElement('div');
                 div.className = "p-3 rounded-xl bg-white/5 border border-white/5 space-y-2.5 w-full overflow-hidden";
 
+                const joursAutresLignes = new Set();
+                enf.entretienLignes.forEach(autre => {
+                    if (autre.id !== ligne.id && autre.jours) {
+                        autre.jours.forEach(j => joursAutresLignes.add(j));
+                    }
+                });
+
                 const boutonsJours = JOURS_SEMAINE_BTN.map(j => {
                     const actif = ligne.jours && ligne.jours.includes(j.idx);
-                    return `<button onclick="toggleJourLigne('${ligne.id}', ${j.idx})"
-                        class="flex-1 h-8 rounded-lg text-[11px] font-bold border transition-all active:scale-90 ${actif ? 'bg-emerald-500/30 text-emerald-200 border-emerald-400/50' : 'bg-white/5 text-slate-500 border-white/10 hover:text-slate-300 hover:border-white/20'}">${j.label}</button>`;
+                    const conflit = !actif && joursAutresLignes.has(j.idx);
+                    let cls = 'flex-1 h-8 rounded-lg text-[11px] font-bold border transition-all active:scale-90 ';
+                    if (actif) cls += 'bg-emerald-500/30 text-emerald-200 border-emerald-400/50';
+                    else if (conflit) cls += 'bg-red-500/20 text-red-400 border-red-500/40';
+                    else cls += 'bg-white/5 text-slate-500 border-white/10 hover:text-slate-300 hover:border-white/20';
+                    const title = conflit ? 'title="Jour déjà utilisé dans une autre ligne"' : '';
+                    return `<button onclick="toggleJourLigne('${ligne.id}', ${j.idx})" class="${cls}" ${title}>${j.label}</button>`;
                 }).join('');
 
                 div.innerHTML = `
