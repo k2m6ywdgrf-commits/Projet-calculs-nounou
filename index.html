@@ -66,9 +66,16 @@
                     <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Suivi de Garde</span>
                     <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">NounouPay</h1>
                 </div>
-                <div class="glass-card px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 border-cyan-500/20 relative cursor-pointer hover:bg-white/10 transition">
-                    <span id="labelPeriode">Juin 2026</span>
-                    <input type="month" id="periodePaye" value="2026-06" class="absolute inset-0 opacity-0 cursor-pointer" onchange="changerMoisGlobal(this.value)">
+                <div class="flex flex-col items-end gap-1.5">
+                    <span class="text-[9px] text-slate-500 uppercase tracking-widest font-semibold">Période</span>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="changerMoisRelative(-1)" class="w-8 h-8 glass-card rounded-xl flex items-center justify-center text-cyan-400 text-lg font-bold border-cyan-500/15 hover:bg-white/10 transition active:scale-90">‹</button>
+                        <div class="glass-card px-3 py-1.5 rounded-xl relative cursor-pointer hover:bg-white/10 transition border-cyan-500/20 min-w-[96px] text-center">
+                            <span id="labelPeriode" class="text-sm font-bold bg-gradient-to-r from-cyan-300 to-indigo-300 bg-clip-text text-transparent whitespace-nowrap pointer-events-none">Juin 2026</span>
+                            <input type="month" id="periodePaye" value="2026-06" class="absolute inset-0 opacity-0 cursor-pointer w-full" onchange="changerMoisGlobal(this.value)">
+                        </div>
+                        <button onclick="changerMoisRelative(1)" class="w-8 h-8 glass-card rounded-xl flex items-center justify-center text-cyan-400 text-lg font-bold border-cyan-500/15 hover:bg-white/10 transition active:scale-90">›</button>
+                    </div>
                 </div>
             </div>
             <div id="tabsEnfantsContainer" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
@@ -962,7 +969,7 @@
                     <div class="flex items-center gap-2 pt-1">
                         <input type="time" value="${heuresVersHHMM(h)}"
                             class="flex-1 min-w-0 glass-input px-3 py-1.5 rounded-lg text-sm font-bold text-center"
-                            onchange="modifierLigneEntretien('${ligne.id}', 'heures', this.value)">
+                            onblur="modifierLigneEntretien('${ligne.id}', 'heures', this.value)">
                         <span class="text-sm text-emerald-300 font-black shrink-0">= ${tauxCalcule.toFixed(2)} €/j</span>
                         <button onclick="supprimerLigneEntretien('${ligne.id}')" class="text-slate-600 hover:text-red-400 text-sm px-1 transition-colors shrink-0">✕</button>
                     </div>
@@ -1117,6 +1124,14 @@
         }
 
         // --- CALCULS ET CALENDRIER ENGINE ---
+        function changerMoisRelative(delta) {
+            const [annee, mois] = appState.moisEnCours.split('-').map(Number);
+            const date = new Date(annee, mois - 1 + delta, 1);
+            const nouveau = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('periodePaye').value = nouveau;
+            changerMoisGlobal(nouveau);
+        }
+
         function changerMoisGlobal(valeurMois) {
             if(!valeurMois) return;
             appState.moisEnCours = valeurMois;
