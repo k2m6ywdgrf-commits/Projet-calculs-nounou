@@ -13,7 +13,15 @@
             -webkit-text-size-adjust: none;
         }
         input, select, textarea, button {
-            font-size: 16px !important; 
+            font-size: 16px !important;
+        }
+        input[type="time"] {
+            color-scheme: dark;
+            -webkit-appearance: none;
+        }
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1) opacity(0.4);
+            cursor: pointer;
         }
         .glass-card {
             background: rgba(255, 255, 255, 0.07);
@@ -951,14 +959,11 @@
 
                 div.innerHTML = `
                     <div class="flex gap-1">${boutonsJours}</div>
-                    <div class="flex items-center gap-2 pt-0.5">
-                        <label class="text-[10px] text-slate-400 shrink-0">Heures / jour</label>
-                        <input type="number" step="0.5" min="0.5" max="24" value="${escapeHtml(ligne.heures)}" inputmode="decimal"
-                            class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-sm text-center font-bold"
-                            oninput="modifierLigneEntretien('${ligne.id}', 'heures', this.value)">
-                        <div class="flex-1 text-right">
-                            <span class="text-sm text-emerald-300 font-black">= ${tauxCalcule.toFixed(2)} €/j</span>
-                        </div>
+                    <div class="flex items-center gap-2 pt-1">
+                        <input type="time" value="${heuresVersHHMM(h)}"
+                            class="flex-1 min-w-0 glass-input px-3 py-1.5 rounded-lg text-sm font-bold text-center"
+                            onchange="modifierLigneEntretien('${ligne.id}', 'heures', this.value)">
+                        <span class="text-sm text-emerald-300 font-black shrink-0">= ${tauxCalcule.toFixed(2)} €/j</span>
                         <button onclick="supprimerLigneEntretien('${ligne.id}')" class="text-slate-600 hover:text-red-400 text-sm px-1 transition-colors shrink-0">✕</button>
                     </div>
                 `;
@@ -969,6 +974,18 @@
         function onEntretienRefChange() {
             sauvegarderProfilActif();
             renderListeLignesEntretien(getEnfantActif());
+        }
+
+        function heuresVersHHMM(heures) {
+            const h = Math.floor(heures);
+            const m = Math.round((heures - h) * 60);
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        function HHMMVersHeures(str) {
+            if (!str) return 0;
+            const [h, m] = str.split(':').map(Number);
+            return h + (m || 0) / 60;
         }
 
         function ajouterLigneEntretien() {
@@ -984,7 +1001,10 @@
             const enf = getEnfantActif();
             if (!enf.entretienLignes) return;
             const ligne = enf.entretienLignes.find(l => l.id === id);
-            if (ligne && prop === 'heures') ligne.heures = parseFloat(value) || 0;
+            if (ligne && prop === 'heures') {
+                // value comes from type="time" as "HH:MM"
+                ligne.heures = HHMMVersHeures(value);
+            }
             sauvegarderTout();
             renderListeLignesEntretien(enf);
             mettreAJourCompteurs();
