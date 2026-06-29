@@ -282,14 +282,20 @@
                     </div>
 
                     <div id="contentConfigurationEntretien" class="space-y-3 pt-2 border-t border-white/5">
-                        <!-- Base légale -->
-                        <div class="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-2.5">
-                            <div class="flex-1">
-                                <label class="text-[10px] text-emerald-300 block mb-1 font-bold uppercase tracking-wide">Base légale</label>
-                                <div class="flex items-center gap-1.5">
-                                    <input type="number" id="paramEntretienBaseLegale" step="0.0001" inputmode="decimal" class="flex-1 glass-input px-2 py-1 rounded-lg text-xs text-right font-bold" oninput="onBaseLegaleChange()">
-                                    <span class="text-[10px] text-slate-400 shrink-0">€ / heure</span>
-                                </div>
+                        <!-- Référence URSSAF -->
+                        <div class="bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-2.5 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <label class="text-[10px] text-emerald-300 font-bold uppercase tracking-wide">Référence URSSAF</label>
+                                <span id="labelTauxEntretienCalc" class="text-[10px] font-mono text-slate-400"></span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="paramEntretienBaseRef" step="0.01" inputmode="decimal" class="flex-1 glass-input px-2 py-1 rounded-lg text-xs text-right font-bold" oninput="onEntretienRefChange()">
+                                <span class="text-[10px] text-slate-400 shrink-0">€ pour 9h de garde</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[10px] text-slate-400 shrink-0">Plancher légal :</span>
+                                <input type="number" id="paramEntretienPlancher" step="0.01" inputmode="decimal" class="w-16 glass-input px-2 py-1 rounded-lg text-xs text-right font-bold" oninput="onEntretienRefChange()">
+                                <span class="text-[10px] text-slate-400 shrink-0">€ / jour min.</span>
                             </div>
                         </div>
 
@@ -515,7 +521,8 @@
             majorationPct: 10,
             tauxMajore: 4.95,
             tauxEntretien: 3.80,
-            entretienBaseLegale: 0.4353,
+            entretienBaseReference: 3.92,
+            entretienPlancherMinimal: 2.65,
             entretienLignes: [
                 { id: 'el1', jours: [1, 2, 3, 4], heures: 9.5 },
                 { id: 'el2', jours: [5], heures: 8.5 }
@@ -691,7 +698,8 @@
             document.getElementById('paramTauxNormal').value = enf.tauxNormal;
             document.getElementById('paramMajorationPct').value = enf.majorationPct !== undefined ? enf.majorationPct : 10;
             document.getElementById('paramTauxMajore').value = enf.tauxMajore;
-            document.getElementById('paramEntretienBaseLegale').value = enf.entretienBaseLegale !== undefined ? enf.entretienBaseLegale : 0.4353;
+            document.getElementById('paramEntretienBaseRef').value = enf.entretienBaseReference !== undefined ? enf.entretienBaseReference : 3.92;
+            document.getElementById('paramEntretienPlancher').value = enf.entretienPlancherMinimal !== undefined ? enf.entretienPlancherMinimal : 2.65;
             document.getElementById('paramHeuresJour').value = enf.heuresJour;
             document.getElementById('paramSeuilHebdo').value = enf.seuilHebdo;
             
@@ -748,7 +756,8 @@
             enf.tauxNormal = parseFloat(document.getElementById('paramTauxNormal').value) || 0;
             enf.majorationPct = parseFloat(document.getElementById('paramMajorationPct').value) || 0;
             enf.tauxMajore = parseFloat(document.getElementById('paramTauxMajore').value) || 0;
-            enf.entretienBaseLegale = parseFloat(document.getElementById('paramEntretienBaseLegale').value) || 0;
+            enf.entretienBaseReference = parseFloat(document.getElementById('paramEntretienBaseRef').value) || 3.92;
+            enf.entretienPlancherMinimal = parseFloat(document.getElementById('paramEntretienPlancher').value) || 2.65;
             enf.heuresJour = parseInt(document.getElementById('paramHeuresJour').value) || 8;
             enf.seuilHebdo = parseInt(document.getElementById('paramSeuilHebdo').value) || 45;
             
@@ -909,7 +918,12 @@
             container.innerHTML = '';
             if (!enf.entretienLignes) enf.entretienLignes = [];
 
-            const baseLegale = enf.entretienBaseLegale !== undefined ? enf.entretienBaseLegale : 0.4353;
+            const baseRef = enf.entretienBaseReference !== undefined ? enf.entretienBaseReference : 3.92;
+            const plancher = enf.entretienPlancherMinimal !== undefined ? enf.entretienPlancherMinimal : 2.65;
+            const tauxHoraire = baseRef / 9;
+
+            const labelCalc = document.getElementById('labelTauxEntretienCalc');
+            if (labelCalc) labelCalc.textContent = `Taux : ${tauxHoraire.toFixed(4)} €/h`;
 
             if (enf.entretienLignes.length === 0) {
                 container.innerHTML = `<p class="text-[10px] italic text-slate-500 text-center py-2">Aucune ligne configurée. Cliquez sur "+ Ajouter une ligne".</p>`;
@@ -917,7 +931,8 @@
             }
 
             enf.entretienLignes.forEach(ligne => {
-                const tauxCalcule = baseLegale * (ligne.heures || 0);
+                const h = ligne.heures || 0;
+                const tauxCalcule = h > 0 ? Math.max(plancher, h * tauxHoraire) : 0;
                 const div = document.createElement('div');
                 div.className = "p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-2 w-full overflow-hidden";
 
@@ -940,7 +955,7 @@
             });
         }
 
-        function onBaseLegaleChange() {
+        function onEntretienRefChange() {
             sauvegarderProfilActif();
             renderListeLignesEntretien(getEnfantActif());
         }
@@ -1264,19 +1279,22 @@
 
             if(enf.entretienOn !== false) {
                 document.getElementById('blockEntretien').classList.remove('hidden');
-                const baseLegale = enf.entretienBaseLegale !== undefined ? enf.entretienBaseLegale : 0;
+                const baseRef = enf.entretienBaseReference !== undefined ? enf.entretienBaseReference : 3.92;
+                const plancher = enf.entretienPlancherMinimal !== undefined ? enf.entretienPlancherMinimal : 2.65;
+                const tauxHoraire = baseRef / 9;
 
                 if (enf.entretienLignes && enf.entretienLignes.length > 0) {
                     enf.entretienLignes.forEach(ligne => {
                         const data = entretienParLigne[ligne.id];
                         if (data && data.count > 0) {
-                            const tauxJour = baseLegale * data.heures;
+                            const h = data.heures || 0;
+                            const tauxJour = h > 0 ? Math.max(plancher, h * tauxHoraire) : 0;
                             const sousTotal = data.count * tauxJour;
                             calculEntretienTotal += sousTotal;
                             const joursLabel = (ligne.jours || [])
                                 .map(j => joursSemaineNoms[j] ? joursSemaineNoms[j].slice(0, 3) : '')
                                 .join('/');
-                            htmlEntretienDetails += `<div class="flex justify-between"><span>• ${joursLabel} (${data.heures}h) : ${data.count} j × ${tauxJour.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotal.toFixed(2)}€</span></div>`;
+                            htmlEntretienDetails += `<div class="flex justify-between"><span>• ${joursLabel} (${h}h) : ${data.count} j × ${tauxJour.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotal.toFixed(2)}€</span></div>`;
                         }
                     });
                 }
