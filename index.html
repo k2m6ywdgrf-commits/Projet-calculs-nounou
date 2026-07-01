@@ -2,13 +2,11 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <!-- Blocage strict du zoom sur mobile -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#020617">
     <title>NounouPay Pro v4.1</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         body {
@@ -52,22 +50,25 @@
             color-scheme: dark;
         }
         html, body { overflow-x: hidden; max-width: 100%; }
-        header { padding-top: calc(env(safe-area-inset-top) + 0.5rem); }
+        
+        /* Ajustement précis de la zone de l'encoche */
+        header { padding-top: calc(env(safe-area-inset-top) + 1rem); }
+        @media (min-width: 640px) {
+            header { padding-top: 0.5rem; }
+        }
+        
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 min-h-screen text-white font-sans antialiased flex justify-center items-center p-0 sm:p-4 overflow-x-hidden">
 
-    <!-- Conteneur Mockup iPhone -->
-    <div class="w-full max-w-md sm:rounded-[45px] shadow-2xl overflow-hidden h-screen sm:h-[880px] flex flex-col relative p-5 bg-slate-900/20 border border-slate-800/80 overflow-x-hidden">
+    <div class="w-full max-w-md sm:rounded-[45px] shadow-2xl overflow-hidden h-screen sm:h-[880px] flex flex-col relative p-4 pt-0 sm:p-5 bg-slate-900/20 border-0 sm:border border-slate-800/80 overflow-x-hidden">
         
-        <!-- Orbes de lumière background -->
         <div class="absolute -top-20 -left-20 w-72 h-72 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute top-1/3 -right-20 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute bottom-20 left-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <!-- EN-TÊTE -->
         <header class="relative z-10 mb-3">
             <div class="flex justify-between items-center mb-3">
                 <div>
@@ -89,7 +90,6 @@
             <div id="tabsEnfantsContainer" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
         </header>
 
-        <!-- NAVIGATION HAUT -->
         <nav class="relative z-10 p-1 rounded-xl flex bg-slate-950/50 border border-white/5 mb-4 shrink-0">
             <button onclick="switchTab('dashboard')" id="btnNavDashboard" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all text-cyan-400 bg-white/10 shadow-sm flex items-center justify-center gap-1.5">
                 <span>📊</span> Dashboard
@@ -99,13 +99,10 @@
             </button>
         </nav>
 
-        <!-- ZONE INTERACTIVE SCROLLABLE -->
         <div class="flex-1 overflow-y-auto no-scrollbar relative z-10 w-full overflow-x-hidden pb-4">
             
-            <!-- ================= TABLEAU DE BORD (DASHBOARD) ================= -->
             <div id="tabDashboard" class="space-y-4">
                 
-                <!-- Calendrier -->
                 <section class="glass-card rounded-2xl p-4">
                     <div class="flex justify-between items-center mb-3">
                         <div>
@@ -118,10 +115,8 @@
 
                 <div id="infoModeCalcul" class="text-center py-1 rounded-lg text-[10px] font-bold tracking-wide"></div>
 
-                <!-- Blocs de résultats -->
                 <div class="space-y-3">
                     
-                    <!-- HEURES NORMALES -->
                     <div id="blockNormal" class="glass-card rounded-xl p-3.5 border-l-4 border-l-cyan-500">
                         <div class="flex justify-between items-center mb-2">
                             <label class="text-xs font-bold text-cyan-300 uppercase tracking-wide flex items-center gap-1.5">
@@ -135,7 +130,6 @@
                         </div>
                     </div>
 
-                    <!-- HEURES MAJORÉES -->
                     <div id="blockMajore" class="glass-card rounded-xl p-3.5 border-l-4 border-l-purple-500 hidden">
                         <div class="flex justify-between items-center mb-2">
                             <label class="text-xs font-bold text-purple-300 uppercase tracking-wide flex items-center gap-1.5">
@@ -149,7 +143,6 @@
                         </div>
                     </div>
 
-                    <!-- ENTRETIEN -->
                     <div id="blockEntretien" class="glass-card rounded-xl p-3.5 border-l-4 border-l-emerald-500">
                         <div class="flex justify-between items-center mb-1">
                             <label class="text-xs font-bold text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
@@ -160,7 +153,6 @@
                         <div id="detailsEntretienDashboard" class="text-[11px] text-slate-400 space-y-0.5 pt-1 border-t border-white/5 mt-1"></div>
                     </div>
 
-                    <!-- REPAS & GOÛTERS -->
                     <div id="blockRepas" class="glass-card rounded-xl p-3.5 border-l-4 border-l-amber-500">
                         <div class="flex justify-between items-center mb-1">
                             <label class="text-xs font-bold text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
@@ -171,7 +163,6 @@
                         <div id="detailsRepasDashboard" class="text-[11px] text-slate-400 space-y-0.5 pt-1 border-t border-white/5 mt-1"></div>
                     </div>
 
-                    <!-- INDEMNITÉS KILOMÉTRIQUES -->
                     <div id="blockKm" class="glass-card rounded-xl p-3.5 border-l-4 border-l-sky-500 hidden">
                         <div class="flex justify-between items-center mb-1">
                             <label class="text-xs font-bold text-sky-300 uppercase tracking-wide flex items-center gap-1.5">
@@ -182,7 +173,6 @@
                         <div id="detailsKmDashboard" class="text-[11px] text-slate-400 space-y-0.5 pt-1 border-t border-white/5 mt-1"></div>
                     </div>
 
-                    <!-- COTISATIONS SOCIALES -->
                     <div id="blockCotisationsDashboard" class="glass-card rounded-xl p-3.5 border-l-4 border-l-red-500 hidden">
                         <div class="flex justify-between items-center mb-1">
                             <label class="text-xs font-bold text-red-300 uppercase tracking-wide flex items-center gap-1.5">
@@ -193,7 +183,6 @@
                         <div id="detailsCotisationsDashboard" class="text-[11px] text-slate-400 space-y-0.5 pt-1 border-t border-white/5 mt-1"></div>
                     </div>
 
-                    <!-- ACOMPTES -->
                     <div id="blockAcomptes" class="glass-card rounded-xl p-3.5 border-l-4 border-l-orange-500 hidden">
                         <div class="flex justify-between items-center mb-2">
                             <label class="text-xs font-bold text-orange-300 uppercase tracking-wide flex items-center gap-1.5">
@@ -207,7 +196,6 @@
                     </div>
                 </div>
 
-                <!-- Grand Bloc Total Global -->
                 <div class="glass-card rounded-2xl p-5 bg-gradient-to-b from-slate-900/90 via-indigo-950/40 to-slate-950/90 text-center border border-cyan-500/20 shadow-xl relative">
                     <p class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest mb-1">Coût Total Net Estimé</p>
                     <p class="text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-indigo-200">
@@ -221,7 +209,6 @@
                 </div>
             </div>
 
-            <!-- ================= ONGLET 2 : CONFIGURATION ================= -->
             <div id="tabSettings" class="space-y-5 hidden">
                 <div class="flex justify-between items-center">
                     <div>
@@ -233,7 +220,6 @@
                     </button>
                 </div>
 
-                <!-- Profil -->
                 <div class="glass-card rounded-2xl p-4 space-y-3">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300">👥 Profil Actif</h3>
                     <div class="grid grid-cols-2 gap-3">
@@ -248,7 +234,6 @@
                     </div>
                 </div>
 
-                <!-- GRILLE TARIFAIRE AVEC MAJORATION DYNAMIQUE -->
                 <div class="glass-card rounded-2xl p-4 space-y-4">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300">💰 Grille Tarifaire</h3>
                     <div class="grid grid-cols-2 gap-4">
@@ -270,7 +255,6 @@
                     </div>
                 </div>
 
-                <!-- MENSUALISATION -->
                 <div class="glass-card rounded-2xl p-4 space-y-4 border border-purple-500/20 bg-purple-950/10">
                     <div class="flex justify-between items-center">
                         <div>
@@ -294,7 +278,6 @@
                     </div>
                 </div>
 
-                <!-- INDEMNITÉS D'ENTRETIEN -->
                 <div class="glass-card rounded-2xl p-4 space-y-3">
                     <div class="flex justify-between items-center">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-300">🏡 Indemnités d'Entretien</h3>
@@ -305,7 +288,6 @@
                     </div>
 
                     <div id="contentConfigurationEntretien" class="space-y-3 pt-2 border-t border-white/5">
-                        <!-- Référence URSSAF -->
                         <div class="bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-3 space-y-3">
                             <div class="flex justify-between items-center">
                                 <span class="text-[10px] text-emerald-300 font-bold uppercase tracking-wide">Référence URSSAF</span>
@@ -329,7 +311,6 @@
                             </div>
                         </div>
 
-                        <!-- Lignes jours/horaires -->
                         <div class="space-y-2">
                             <div class="flex justify-between items-center">
                                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Jours & Horaires</span>
@@ -340,7 +321,6 @@
                     </div>
                 </div>
 
-                <!-- FRAIS DE REPAS -->
                 <div class="glass-card rounded-2xl p-4 space-y-3">
                     <div class="flex justify-between items-center">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-amber-300">🍽️ Frais de Repas & Collations</h3>
@@ -359,7 +339,6 @@
                     </div>
                 </div>
 
-                <!-- INDEMNITÉS KILOMÉTRIQUES -->
                 <div class="glass-card rounded-2xl p-4 space-y-3">
                     <div class="flex justify-between items-center">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-sky-300">🚗 Indemnités Kilométriques</h3>
@@ -378,7 +357,6 @@
                     </div>
                 </div>
 
-                <!-- ACOMPTES -->
                 <div class="glass-card rounded-2xl p-4 space-y-3">
                     <div class="flex justify-between items-center">
                         <div>
@@ -395,7 +373,6 @@
                     </div>
                 </div>
 
-                <!-- COTISATIONS SOCIALES -->
                 <div class="glass-card rounded-2xl p-4 space-y-3 border border-red-500/20 bg-red-950/5">
                     <div class="flex justify-between items-center">
                         <div>
@@ -422,7 +399,6 @@
                     </div>
                 </div>
 
-                <!-- Rythme en mode réel -->
                 <div id="blocParametresReel" class="glass-card rounded-2xl p-4 space-y-4">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300">⏱️ Paramètres de calcul au Réel</h3>
                     <div class="space-y-3">
@@ -449,7 +425,6 @@
                     </button>
                 </div>
 
-                <!-- SAUVEGARDE / RESTAURATION -->
                 <div class="glass-card rounded-2xl p-4 space-y-3">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">💾 Sauvegarde des données</h3>
                     <p class="text-[10px] text-slate-400">Exportez régulièrement vos données (tous les profils) dans un fichier, ou restaurez une sauvegarde précédente.</p>
@@ -485,7 +460,6 @@
 
         // --- CALCUL DYNAMIQUE DES JOURS FÉRIÉS (toute année, France métropolitaine) ---
         function calculerDatePaques(annee) {
-            // Algorithme de Meeus/Jones/Butcher (calendrier grégorien)
             const a = annee % 19;
             const b = Math.floor(annee / 100);
             const c = annee % 100;
@@ -498,7 +472,7 @@
             const k = c % 4;
             const l = (32 + 2 * e + 2 * i - h - k) % 7;
             const m = Math.floor((a + 11 * h + 22 * l) / 451);
-            const moisPaques = Math.floor((h + l - 7 * m + 114) / 31); // 3 = mars, 4 = avril
+            const moisPaques = Math.floor((h + l - 7 * m + 114) / 31);
             const jourPaques = ((h + l - 7 * m + 114) % 31) + 1;
             return new Date(annee, moisPaques - 1, jourPaques);
         }
@@ -523,17 +497,17 @@
             lundiPentecote.setDate(lundiPentecote.getDate() + 50);
 
             return [
-                `${annee}-01-01`,              // Jour de l'an
-                formatDateIso(lundiPaques),     // Lundi de Pâques
-                `${annee}-05-01`,               // Fête du Travail
-                `${annee}-05-08`,               // Victoire 1945
-                formatDateIso(ascension),       // Ascension
-                formatDateIso(lundiPentecote),  // Lundi de Pentecôte
-                `${annee}-07-14`,               // Fête nationale
-                `${annee}-08-15`,               // Assomption
-                `${annee}-11-01`,               // Toussaint
-                `${annee}-11-11`,               // Armistice
-                `${annee}-12-25`                // Noël
+                `${annee}-01-01`,              
+                formatDateIso(lundiPaques),     
+                `${annee}-05-01`,               
+                `${annee}-05-08`,               
+                formatDateIso(ascension),       
+                formatDateIso(lundiPentecote),  
+                `${annee}-07-14`,               
+                `${annee}-08-15`,               
+                `${annee}-11-01`,               
+                `${annee}-11-11`,               
+                `${annee}-12-25`                
             ];
         }
 
@@ -609,7 +583,7 @@
             localStorage.setItem('nounoupay_v4_state', JSON.stringify(appState));
         }
 
-        // --- EXPORT / IMPORT (SAUVEGARDE DES DONNÉES) ---
+        // --- EXPORT / IMPORT ---
         function exporterDonnees() {
             try {
                 const contenu = JSON.stringify(appState, null, 2);
@@ -647,7 +621,7 @@
                         return;
                     }
 
-                    if (confirm("Importer cette sauvegarde va remplacer toutes les données actuelles (tous les profils enfants). Continuer ?")) {
+                    if (confirm("Importer cette sauvegarde va remplacer toutes les données actuelles. Continuer ?")) {
                         appState = donneesImportees;
                         if (!appState.activeEnfantId || !appState.enfants.find(e => e.id === appState.activeEnfantId)) {
                             appState.activeEnfantId = appState.enfants[0].id;
@@ -817,7 +791,7 @@
             mettreAJourCompteurs();
         }
 
-        // --- GESTION DES REPAS (SÉCURISÉ CONTRE LE DÉBORDEMENT) ---
+        // --- GESTION DES REPAS ---
         function renderListeRationsRepas(enf) {
             const container = document.getElementById('listeRationsRepas');
             container.innerHTML = '';
@@ -863,7 +837,7 @@
             mettreAJourCompteurs();
         }
 
-        // --- GESTION DES INDEMNITÉS KILOMÉTRIQUES (SÉCURISÉ CONTRE LE DÉBORDEMENT) ---
+        // --- GESTION DES INDEMNITÉS KILOMÉTRIQUES ---
         function renderListeKmTrajets(enf) {
             const container = document.getElementById('listeKmTrajets');
             container.innerHTML = '';
@@ -918,7 +892,7 @@
             mettreAJourCompteurs();
         }
 
-        // --- GESTION DES ACOMPTES (PAR MOIS) ---
+        // --- GESTION DES ACOMPTES ---
         function modifierAcompteMois(value) {
             const enf = getEnfantActif();
             if(!enf) return;
@@ -936,7 +910,7 @@
             document.getElementById('inputAcompteMois').value = valeurMois ? valeurMois : '';
         }
 
-        // --- GESTION DES LIGNES D'ENTRETIEN (base légale × heures, par jours sélectionnés) ---
+        // --- GESTION DES LIGNES D'ENTRETIEN ---
         const JOURS_SEMAINE_BTN = [
             { label: 'L', idx: 1 }, { label: 'M', idx: 2 }, { label: 'M', idx: 3 },
             { label: 'J', idx: 4 }, { label: 'V', idx: 5 }, { label: 'S', idx: 6 }, { label: 'D', idx: 0 }
@@ -1029,7 +1003,6 @@
             if (!enf.entretienLignes) return;
             const ligne = enf.entretienLignes.find(l => l.id === id);
             if (ligne && prop === 'heures') {
-                // value comes from type="time" as "HH:MM"
                 ligne.heures = HHMMVersHeures(value);
             }
             sauvegarderTout();
@@ -1061,7 +1034,7 @@
             mettreAJourCompteurs();
         }
 
-        // --- GESTION DES COTISATIONS SOCIALES (SÉCURISÉ CONTRE LE DÉBORDEMENT) ---
+        // --- GESTION DES COTISATIONS SOCIALES ---
         function renderListeCotisationsSociales(enf) {
             const container = document.getElementById('listeCotisationsSociales');
             container.innerHTML = '';
@@ -1143,7 +1116,7 @@
             }
         }
 
-        // --- CALCULS ET CALENDRIER ENGINE ---
+        // --- CALCULS ET CALENDRIER ---
         function changerMoisRelative(delta) {
             const [annee, mois] = appState.moisEnCours.split('-').map(Number);
             const date = new Date(annee, mois - 1 + delta, 1);
@@ -1268,7 +1241,6 @@
             const toutesCases = document.querySelectorAll('[data-jour]');
             let joursGardeReels = 0;
             
-            // Comptage par ligne d'entretien (base légale × heures, par jours sélectionnés)
             let entretienParLigne = {};
             if (enf.entretienOn !== false && enf.entretienLignes) {
                 enf.entretienLignes.forEach(ligne => {
