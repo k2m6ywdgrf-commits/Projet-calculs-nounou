@@ -1,67 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <!-- Fond radial sombre -->
-    <radialGradient id="bg" cx="38%" cy="32%" r="78%">
-      <stop offset="0%" stop-color="#1e1b4b"/>
-      <stop offset="55%" stop-color="#0f172a"/>
-      <stop offset="100%" stop-color="#020617"/>
+    <radialGradient id="bgNuit" cx="35%" cy="28%" r="80%">
+      <stop offset="0%" stop-color="#312e81"/>
+      <stop offset="55%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
     </radialGradient>
-
-    <!-- Dégradé du cœur : cyan → indigo -->
-    <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#22d3ee"/>
-      <stop offset="55%" stop-color="#38bdf8"/>
-      <stop offset="100%" stop-color="#6366f1"/>
-    </linearGradient>
-
-    <!-- Lueur douce autour du cœur -->
-    <filter id="glow" x="-35%" y="-35%" width="170%" height="170%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="28" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-
-    <!-- Lueur ambiante fond -->
-    <filter id="ambientBlur" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="60"/>
-    </filter>
   </defs>
 
-  <!-- Fond -->
-  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#bgNuit)"/>
 
-  <!-- Halos ambiants -->
-  <ellipse cx="310" cy="270" rx="320" ry="260" fill="#22d3ee" opacity="0.07" filter="url(#ambientBlur)"/>
-  <ellipse cx="760" cy="790" rx="240" ry="200" fill="#6366f1" opacity="0.09" filter="url(#ambientBlur)"/>
+  <circle cx="180" cy="180" r="10" fill="#22d3ee" opacity="0.4"/>
+  <circle cx="880" cy="220" r="7" fill="#a5b4fc" opacity="0.35"/>
 
-  <!-- Cœur -->
-  <path d="
-    M512 760
-    C 480 730, 148 540, 148 318
-    Q 148 152, 316 166
-    Q 424 174, 512 298
-    Q 600 174, 708 166
-    Q 876 152, 876 318
-    C 876 540, 544 730, 512 760 Z"
-    fill="url(#heartGrad)"
-    filter="url(#glow)"
-    opacity="0.93"/>
+  <circle cx="360" cy="410" r="84" fill="#e7fbff"/>
+  <circle cx="664" cy="410" r="84" fill="#e7fbff"/>
+  <rect x="452" y="392" width="120" height="28" rx="14" fill="#22d3ee"/>
+  <rect x="252" y="420" width="520" height="380" rx="140" fill="#e7fbff"/>
 
-  <!-- Signe euro — blanc, centré dans le cœur -->
-  <text
-    x="512" y="490"
-    text-anchor="middle"
-    dominant-baseline="central"
+  <circle cx="450" cy="556" r="18" fill="#1e1b4b"/>
+  <circle cx="574" cy="556" r="18" fill="#1e1b4b"/>
+
+  <ellipse cx="512" cy="624" rx="84" ry="60" fill="#a5b4fc"/>
+  <circle cx="488" cy="616" r="8" fill="#e7fbff"/>
+  <circle cx="536" cy="616" r="8" fill="#e7fbff"/>
+
+  <circle cx="764" cy="732" r="104" fill="#22d3ee" stroke="#e7fbff" stroke-width="12"/>
+  <text x="764" y="736" text-anchor="middle" dominant-baseline="central"
     font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif"
-    font-size="290"
-    font-weight="900"
-    fill="white"
-    opacity="0.97">€</text>
-
-  <!-- Petits points décoratifs cyan -->
-  <circle cx="192" cy="228" r="14" fill="#22d3ee" opacity="0.55"/>
-  <circle cx="832" cy="228" r="9"  fill="#a5b4fc" opacity="0.45"/>
-  <circle cx="155" cy="480" r="7"  fill="#22d3ee" opacity="0.30"/>
+    font-size="104" font-weight="800" fill="#1e1b4b">€</text>
 </svg>
