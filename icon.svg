@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- Fond radial sombre -->
+    <radialGradient id="bg" cx="38%" cy="32%" r="78%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="55%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </radialGradient>
+
+    <!-- Dégradé du cœur : cyan → indigo -->
+    <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="55%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+
+    <!-- Lueur douce autour du cœur -->
+    <filter id="glow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="28" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Lueur ambiante fond -->
+    <filter id="ambientBlur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="60"/>
+    </filter>
+  </defs>
+
+  <!-- Fond -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- Halos ambiants -->
+  <ellipse cx="310" cy="270" rx="320" ry="260" fill="#22d3ee" opacity="0.07" filter="url(#ambientBlur)"/>
+  <ellipse cx="760" cy="790" rx="240" ry="200" fill="#6366f1" opacity="0.09" filter="url(#ambientBlur)"/>
+
+  <!-- Cœur -->
+  <path d="
+    M512 760
+    C 480 730, 148 540, 148 318
+    Q 148 152, 316 166
+    Q 424 174, 512 298
+    Q 600 174, 708 166
+    Q 876 152, 876 318
+    C 876 540, 544 730, 512 760 Z"
+    fill="url(#heartGrad)"
+    filter="url(#glow)"
+    opacity="0.93"/>
+
+  <!-- Signe euro — blanc, centré dans le cœur -->
+  <text
+    x="512" y="490"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif"
+    font-size="290"
+    font-weight="900"
+    fill="white"
+    opacity="0.97">€</text>
+
+  <!-- Petits points décoratifs cyan -->
+  <circle cx="192" cy="228" r="14" fill="#22d3ee" opacity="0.55"/>
+  <circle cx="832" cy="228" r="9"  fill="#a5b4fc" opacity="0.45"/>
+  <circle cx="155" cy="480" r="7"  fill="#22d3ee" opacity="0.30"/>
+</svg>
