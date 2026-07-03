@@ -502,6 +502,12 @@
             return `${maintenant.getFullYear()}-${String(maintenant.getMonth() + 1).padStart(2, '0')}`;
         }
 
+        const cacheJoursFeries = {};
+        function joursFeriesAnnee(annee) {
+            if (!cacheJoursFeries[annee]) cacheJoursFeries[annee] = calculerJoursFeries(annee);
+            return cacheJoursFeries[annee];
+        }
+
         function calculerJoursFeries(annee) {
             const paques = calculerDatePaques(annee);
 
@@ -576,13 +582,112 @@
 
         document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
 
+        // --- NORMALISATION DES DONNÉES (localStorage et fichiers importés) ---
+        function toNombre(valeur, defaut) {
+            const n = typeof valeur === 'number' ? valeur : parseFloat(valeur);
+            return Number.isFinite(n) ? n : defaut;
+        }
+
+        function idValide(id) {
+            return (typeof id === 'number' && Number.isFinite(id)) || /^[A-Za-z0-9_.-]+$/.test(String(id));
+        }
+
+        function normaliserListe(liste, prefixe, normaliserItem) {
+            if (!Array.isArray(liste)) return [];
+            return liste
+                .filter(item => item && typeof item === 'object')
+                .map((item, i) => {
+                    const propre = normaliserItem(item);
+                    propre.id = idValide(item.id) ? String(item.id) : `${prefixe}_${Date.now()}_${i}`;
+                    return propre;
+                });
+        }
+
+        function normaliserProfil(brut, index) {
+            const base = profilDefaut(Date.now() + index, `Enfant ${index + 1}`);
+            const enf = Object.assign({}, base, (brut && typeof brut === 'object') ? brut : {});
+
+            enf.id = (brut && idValide(brut.id)) ? brut.id : base.id;
+            enf.nomEnfant = typeof enf.nomEnfant === 'string' ? enf.nomEnfant : base.nomEnfant;
+            enf.nomNounou = typeof enf.nomNounou === 'string' ? enf.nomNounou : base.nomNounou;
+
+            ['tauxNormal', 'majorationPct', 'tauxMajore', 'entretienBaseReference', 'entretienPlancherMinimal',
+             'heuresJour', 'seuilHebdo', 'mensualiseNormal', 'mensualiseMajore'].forEach(champ => {
+                enf[champ] = toNombre(enf[champ], base[champ]);
+            });
+
+            ['mensualisationOn', 'entretienOn', 'repasOn', 'kmOn', 'acomptesOn', 'cotisationsOn'].forEach(champ => {
+                enf[champ] = !!enf[champ];
+            });
+
+            enf.entretienLignes = normaliserListe(enf.entretienLignes, 'el', item => ({
+                jours: Array.isArray(item.jours) ? item.jours.map(Number).filter(j => Number.isInteger(j) && j >= 0 && j <= 6) : [],
+                heures: toNombre(item.heures, 0)
+            }));
+            enf.repasList = normaliserListe(enf.repasList, 'r', item => ({
+                nom: typeof item.nom === 'string' ? item.nom : '',
+                prix: toNombre(item.prix, 0)
+            }));
+            enf.kmTrajets = normaliserListe(enf.kmTrajets, 'k', item => ({
+                nom: typeof item.nom === 'string' ? item.nom : '',
+                distanceKm: toNombre(item.distanceKm, 0),
+                tauxKm: toNombre(item.tauxKm, 0)
+            }));
+            enf.cotisations = normaliserListe(enf.cotisations, 'c', item => ({
+                nom: typeof item.nom === 'string' ? item.nom : '',
+                baseType: ['net', 'heure', 'net_maj', 'heure_maj'].includes(item.baseType) ? item.baseType : 'net',
+                taux: toNombre(item.taux, 0)
+            }));
+
+            const acomptes = {};
+            if (enf.acomptesParMois && typeof enf.acomptesParMois === 'object') {
+                Object.keys(enf.acomptesParMois).forEach(mois => {
+                    if (/^\d{4}-\d{2}$/.test(mois)) acomptes[mois] = toNombre(enf.acomptesParMois[mois], 0);
+                });
+            }
+            enf.acomptesParMois = acomptes;
+
+            const agenda = {};
+            if (enf.agendaCustom && typeof enf.agendaCustom === 'object') {
+                Object.keys(enf.agendaCustom).forEach(dateIso => {
+                    const etat = enf.agendaCustom[dateIso];
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateIso) && (etat === 'travaill_force' || etat === 'deduit_force')) {
+                        agenda[dateIso] = etat;
+                    }
+                });
+            }
+            enf.agendaCustom = agenda;
+
+            return enf;
+        }
+
+        function normaliserEtat(brut) {
+            const etat = {
+                enfants: [],
+                activeEnfantId: null,
+                moisEnCours: moisActuelIso()
+            };
+            if (brut && Array.isArray(brut.enfants)) {
+                etat.enfants = brut.enfants.map((e, i) => normaliserProfil(e, i));
+            }
+            if (etat.enfants.length === 0) {
+                etat.enfants = [profilDefaut(Date.now(), "Mon Enfant")];
+            }
+            const actif = brut ? etat.enfants.find(e => e.id === brut.activeEnfantId) : null;
+            etat.activeEnfantId = actif ? actif.id : etat.enfants[0].id;
+            if (brut && typeof brut.moisEnCours === 'string' && /^\d{4}-\d{2}$/.test(brut.moisEnCours)) {
+                etat.moisEnCours = brut.moisEnCours;
+            }
+            return etat;
+        }
+
         function initApp() {
+            let brut = null;
             const data = localStorage.getItem('nounoupay_v4_state');
             if (data) {
-                try { appState = JSON.parse(data); } catch(e) { setupFirstRun(); }
-            } else { setupFirstRun(); }
-            
-            if(!appState.enfants || appState.enfants.length === 0) setupFirstRun();
+                try { brut = JSON.parse(data); } catch(e) { brut = null; }
+            }
+            appState = normaliserEtat(brut);
 
             appState.moisEnCours = moisActuelIso();
             sauvegarderTout();
@@ -591,16 +696,12 @@
             chargerProfilEnEcran(appState.activeEnfantId);
         }
 
-        function setupFirstRun() {
-            const idInitial = Date.now();
-            appState.enfants = [profilDefaut(idInitial, "Mon Enfant")];
-            appState.activeEnfantId = idInitial;
-            appState.moisEnCours = moisActuelIso();
-            sauvegarderTout();
-        }
-
         function sauvegarderTout() {
-            localStorage.setItem('nounoupay_v4_state', JSON.stringify(appState));
+            try {
+                localStorage.setItem('nounoupay_v4_state', JSON.stringify(appState));
+            } catch(e) {
+                console.warn("Sauvegarde locale impossible :", e);
+            }
         }
 
         // --- EXPORT / IMPORT ---
@@ -642,13 +743,7 @@
                     }
 
                     if (confirm("Importer cette sauvegarde va remplacer toutes les données actuelles. Continuer ?")) {
-                        appState = donneesImportees;
-                        if (!appState.activeEnfantId || !appState.enfants.find(e => e.id === appState.activeEnfantId)) {
-                            appState.activeEnfantId = appState.enfants[0].id;
-                        }
-                        if (!appState.moisEnCours) {
-                            appState.moisEnCours = formatDateIso(new Date()).slice(0, 7);
-                        }
+                        appState = normaliserEtat(donneesImportees);
                         sauvegarderTout();
                         renderTabsEnfants();
                         chargerProfilEnEcran(appState.activeEnfantId);
@@ -997,8 +1092,9 @@
         }
 
         function heuresVersHHMM(heures) {
-            const h = Math.floor(heures);
-            const m = Math.round((heures - h) * 60);
+            const totalMinutes = Math.round((heures || 0) * 60);
+            const h = Math.floor(totalMinutes / 60);
+            const m = totalMinutes % 60;
             return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
         }
 
@@ -1136,6 +1232,15 @@
         }
 
         // --- CALCULS ET CALENDRIER ---
+        function estJourTravaille(enf, date) {
+            const dateIso = formatDateIso(date);
+            const dayOfWeek = date.getDay();
+            const estFerie = joursFeriesAnnee(date.getFullYear()).includes(dateIso);
+            const etatForce = enf.agendaCustom ? enf.agendaCustom[dateIso] : undefined;
+            if (estFerie || dayOfWeek === 0 || dayOfWeek === 6) return etatForce === 'travaill_force';
+            return etatForce !== 'deduit_force';
+        }
+
         function changerMoisRelative(delta) {
             const [annee, mois] = appState.moisEnCours.split('-').map(Number);
             const date = new Date(annee, mois - 1 + delta, 1);
@@ -1211,39 +1316,30 @@
             }
 
             const enf = getEnfantActif();
-            const joursFeries = calculerJoursFeries(annee);
+            const joursFeries = joursFeriesAnnee(annee);
 
             for (let jour = 1; jour <= totalJoursDansMois; jour++) {
                 const dateCourante = new Date(annee, moisIndex, jour);
-                const dayOfWeek = dateCourante.getDay(); 
+                const dayOfWeek = dateCourante.getDay();
                 const mStr = String(moisIndex + 1).padStart(2, '0');
                 const jStr = String(jour).padStart(2, '0');
                 const dateIsoStr = `${annee}-${mStr}-${jStr}`;
 
                 const estWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
                 const estFerie = joursFeries.includes(dateIsoStr);
-                
+
                 const caseJour = document.createElement('div');
                 caseJour.innerText = jour;
                 caseJour.dataset.jour = jour;
                 caseJour.dataset.dateStr = dateIsoStr;
                 caseJour.dataset.dayOfWeek = dayOfWeek;
 
-                let natureBase = "ouvre"; 
+                let natureBase = "ouvre";
                 if (estWeekend) natureBase = "weekend";
                 if (estFerie) natureBase = "ferie";
                 caseJour.dataset.nature = natureBase;
 
-                const etatForce = enf.agendaCustom && enf.agendaCustom[dateIsoStr];
-                let estTravaille = false;
-
-                if (natureBase === "ouvre") {
-                    estTravaille = (typeof etatForce === 'undefined' || etatForce === 'travaill_force');
-                } else {
-                    estTravaille = (etatForce === 'travaill_force');
-                }
-
-                caseJour.dataset.travaille = estTravaille ? "true" : "false";
+                caseJour.dataset.travaille = estJourTravaille(enf, dateCourante) ? "true" : "false";
                 appliquerStyleCase(caseJour);
 
                 caseJour.addEventListener('click', function() {
@@ -1329,30 +1425,34 @@
                 const parts = appState.moisEnCours.split('-');
                 const annee = parseInt(parts[0]);
                 const moisIndex = parseInt(parts[1]) - 1;
-                const totalJoursDansMois = new Date(annee, moisIndex + 1, 0).getDate();
+                const finMois = new Date(annee, moisIndex + 1, 0);
 
-                let heuresSemaineEnCours = 0;
+                // Le seuil hebdomadaire s'apprécie sur la semaine complète (lundi-dimanche),
+                // y compris les jours appartenant au mois précédent ou suivant. Les heures
+                // au-delà du seuil sont majorées chronologiquement, et chaque jour est
+                // rattaché au mois auquel il appartient.
+                const curseur = new Date(annee, moisIndex, 1);
+                curseur.setDate(curseur.getDate() - ((curseur.getDay() + 6) % 7));
 
-                for (let jour = 1; jour <= totalJoursDansMois; jour++) {
-                    const dateCourante = new Date(annee, moisIndex, jour);
-                    const dayOfWeek = dateCourante.getDay(); 
-                    const elJour = document.querySelector(`[data-jour="${jour}"]`);
-                    
-                    if (elJour && elJour.dataset.travaille === "true") {
-                        heuresSemaineEnCours += enf.heuresJour;
-                    }
-
-                    if (dayOfWeek === 0 || jour === totalJoursDansMois) {
-                        if (heuresSemaineEnCours > enf.seuilHebdo) {
-                            totalMajoreHours += (heuresSemaineEnCours - enf.seuilHebdo);
-                            totalNormalHours += enf.seuilHebdo;
-                        } else {
-                            totalNormalHours += heuresSemaineEnCours;
+                while (curseur <= finMois) {
+                    let heuresSemaine = 0;
+                    for (let d = 0; d < 7; d++) {
+                        const date = new Date(curseur.getFullYear(), curseur.getMonth(), curseur.getDate() + d);
+                        if (!estJourTravaille(enf, date)) continue;
+                        const heuresAvant = heuresSemaine;
+                        heuresSemaine += enf.heuresJour;
+                        const majorees = Math.max(0, heuresSemaine - enf.seuilHebdo) - Math.max(0, heuresAvant - enf.seuilHebdo);
+                        if (date.getFullYear() === annee && date.getMonth() === moisIndex) {
+                            totalMajoreHours += majorees;
+                            totalNormalHours += enf.heuresJour - majorees;
                         }
-                        heuresSemaineEnCours = 0;
                     }
+                    curseur.setDate(curseur.getDate() + 7);
                 }
             }
+
+            totalNormalHours = Math.round(totalNormalHours * 100) / 100;
+            totalMajoreHours = Math.round(totalMajoreHours * 100) / 100;
 
             document.getElementById('dashQuantiteNormal').innerText = totalNormalHours + " h";
             document.getElementById('dashValTauxNormal').innerText = enf.tauxNormal.toFixed(2) + " €";
