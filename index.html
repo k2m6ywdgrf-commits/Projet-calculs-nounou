@@ -26,9 +26,6 @@
             filter: invert(1) opacity(0.4);
             cursor: pointer;
         }
-        #periodePaye::-webkit-clear-button {
-            display: none;
-        }
         .glass-card {
             background: rgba(255, 255, 255, 0.07);
             backdrop-filter: blur(20px);
@@ -82,13 +79,10 @@
                 </div>
                 <div class="flex items-center rounded-2xl overflow-hidden glass-card border border-cyan-500/25 shadow-[0_0_16px_rgba(6,182,212,0.1)]">
                     <button onclick="changerMoisRelative(-1)" class="h-10 w-9 flex items-center justify-center text-cyan-400 hover:bg-white/10 active:bg-cyan-500/20 transition-all active:scale-90 border-r border-white/5 text-lg leading-none">‹</button>
-                    <div class="relative cursor-pointer group min-w-[104px]">
-                        <div class="flex flex-col items-center px-2 py-1.5 group-hover:bg-white/5 transition-colors">
-                            <span class="text-[7.5px] text-cyan-500/60 uppercase tracking-[0.18em] font-bold leading-none mb-1">Période</span>
-                            <span id="labelPeriode" class="text-[13px] font-extrabold bg-gradient-to-r from-cyan-300 to-indigo-300 bg-clip-text text-transparent whitespace-nowrap leading-tight"></span>
-                        </div>
-                        <input type="month" id="periodePaye" class="absolute inset-0 opacity-0 cursor-pointer w-full" onchange="changerMoisGlobal(this.value)">
-                    </div>
+                    <button onclick="ouvrirSelecteurMois()" class="flex flex-col items-center px-2 py-1.5 hover:bg-white/5 transition-colors min-w-[104px]">
+                        <span class="text-[7.5px] text-cyan-500/60 uppercase tracking-[0.18em] font-bold leading-none mb-1">Période</span>
+                        <span id="labelPeriode" class="text-[13px] font-extrabold bg-gradient-to-r from-cyan-300 to-indigo-300 bg-clip-text text-transparent whitespace-nowrap leading-tight"></span>
+                    </button>
                     <button onclick="changerMoisRelative(1)" class="h-10 w-9 flex items-center justify-center text-cyan-400 hover:bg-white/10 active:bg-cyan-500/20 transition-all active:scale-90 border-l border-white/5 text-lg leading-none">›</button>
                 </div>
             </div>
@@ -446,6 +440,20 @@
             </div>
 
         </div>
+
+        <div id="modalSelecteurMois" class="hidden absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <div class="glass-card rounded-2xl p-5 w-full max-w-xs border border-cyan-500/25 shadow-xl">
+                <p class="text-[11px] text-cyan-500/70 uppercase tracking-widest font-bold mb-3 text-center">Choisir la période</p>
+                <div class="flex gap-2 mb-4">
+                    <select id="selectMoisPicker" class="glass-input rounded-xl px-2 py-2 flex-1 text-sm"></select>
+                    <select id="selectAnneePicker" class="glass-input rounded-xl px-2 py-2 w-24 text-sm"></select>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="fermerSelecteurMois()" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-300 bg-white/5 hover:bg-white/10 transition-all active:scale-95">Annuler</button>
+                    <button onclick="validerSelecteurMois()" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-cyan-500 to-indigo-500 hover:opacity-90 transition-all active:scale-95">Valider</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -579,7 +587,6 @@
             appState.moisEnCours = moisActuelIso();
             sauvegarderTout();
 
-            document.getElementById('periodePaye').value = appState.moisEnCours;
             renderTabsEnfants();
             chargerProfilEnEcran(appState.activeEnfantId);
         }
@@ -643,7 +650,6 @@
                             appState.moisEnCours = formatDateIso(new Date()).slice(0, 7);
                         }
                         sauvegarderTout();
-                        document.getElementById('periodePaye').value = appState.moisEnCours;
                         renderTabsEnfants();
                         chargerProfilEnEcran(appState.activeEnfantId);
                         alert("Sauvegarde importée avec succès.");
@@ -1134,8 +1140,34 @@
             const [annee, mois] = appState.moisEnCours.split('-').map(Number);
             const date = new Date(annee, mois - 1 + delta, 1);
             const nouveau = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            document.getElementById('periodePaye').value = nouveau;
             changerMoisGlobal(nouveau);
+        }
+
+        function ouvrirSelecteurMois() {
+            const [annee, mois] = appState.moisEnCours.split('-').map(Number);
+            const selectMois = document.getElementById('selectMoisPicker');
+            const selectAnnee = document.getElementById('selectAnneePicker');
+            selectMois.innerHTML = moisNoms.map((nom, i) => `<option value="${i + 1}">${nom}</option>`).join('');
+            selectMois.value = mois;
+            const anneeActuelle = new Date().getFullYear();
+            let optionsAnnee = '';
+            for (let a = anneeActuelle - 5; a <= anneeActuelle + 5; a++) {
+                optionsAnnee += `<option value="${a}">${a}</option>`;
+            }
+            selectAnnee.innerHTML = optionsAnnee;
+            selectAnnee.value = annee;
+            document.getElementById('modalSelecteurMois').classList.remove('hidden');
+        }
+
+        function fermerSelecteurMois() {
+            document.getElementById('modalSelecteurMois').classList.add('hidden');
+        }
+
+        function validerSelecteurMois() {
+            const mois = String(document.getElementById('selectMoisPicker').value).padStart(2, '0');
+            const annee = document.getElementById('selectAnneePicker').value;
+            changerMoisGlobal(`${annee}-${mois}`);
+            fermerSelecteurMois();
         }
 
         function changerMoisGlobal(valeurMois) {
