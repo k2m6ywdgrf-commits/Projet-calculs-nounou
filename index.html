@@ -82,9 +82,9 @@
                     <div class="relative cursor-pointer group min-w-[104px]">
                         <div class="flex flex-col items-center px-2 py-1.5 group-hover:bg-white/5 transition-colors">
                             <span class="text-[7.5px] text-cyan-500/60 uppercase tracking-[0.18em] font-bold leading-none mb-1">Période</span>
-                            <span id="labelPeriode" class="text-[13px] font-extrabold bg-gradient-to-r from-cyan-300 to-indigo-300 bg-clip-text text-transparent whitespace-nowrap leading-tight">Juin 2026</span>
+                            <span id="labelPeriode" class="text-[13px] font-extrabold bg-gradient-to-r from-cyan-300 to-indigo-300 bg-clip-text text-transparent whitespace-nowrap leading-tight"></span>
                         </div>
-                        <input type="month" id="periodePaye" value="2026-06" class="absolute inset-0 opacity-0 cursor-pointer w-full" onchange="changerMoisGlobal(this.value)">
+                        <input type="month" id="periodePaye" class="absolute inset-0 opacity-0 cursor-pointer w-full" onchange="changerMoisGlobal(this.value)">
                     </div>
                     <button onclick="changerMoisRelative(1)" class="h-10 w-9 flex items-center justify-center text-cyan-400 hover:bg-white/10 active:bg-cyan-500/20 transition-all active:scale-90 border-l border-white/5 text-lg leading-none">›</button>
                 </div>
@@ -1481,7 +1481,7 @@
             }
         }
 
-        window.onload = function() { initApp(); };
+        initApp();
     </script>
 </body>
 </html>
