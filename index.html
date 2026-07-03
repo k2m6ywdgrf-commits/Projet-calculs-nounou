@@ -573,6 +573,9 @@
             
             if(!appState.enfants || appState.enfants.length === 0) setupFirstRun();
 
+            appState.moisEnCours = moisActuelIso();
+            sauvegarderTout();
+
             document.getElementById('periodePaye').value = appState.moisEnCours;
             renderTabsEnfants();
             chargerProfilEnEcran(appState.activeEnfantId);
