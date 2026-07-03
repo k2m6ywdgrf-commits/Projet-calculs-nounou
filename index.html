@@ -108,9 +108,9 @@
                 <section class="glass-card rounded-2xl p-4">
                     <div class="flex justify-between items-center mb-3">
                         <div>
-                            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Planning Mensuel</h2>
+                            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider leading-snug">Planning<br>Mensuel</h2>
                         </div>
-                        <div id="badgeContainer" class="text-[10px] font-bold flex items-center gap-1.5"></div>
+                        <div id="badgeContainer" class="text-[10px] font-bold flex items-center gap-1.5 whitespace-nowrap"></div>
                     </div>
                     <div id="calendrierGrid" class="grid grid-cols-7 gap-1.5 text-center text-[11px]"></div>
                 </section>
@@ -1269,7 +1269,7 @@
                 }
             });
 
-            document.getElementById('badgeContainer').innerHTML = `<span class="bg-cyan-500/15 text-cyan-300 px-2.5 py-0.5 rounded-full border border-cyan-500/20">${joursGardeReels} Jrs Présence</span><span class="text-slate-500 font-semibold">/</span><span class="bg-slate-500/15 text-slate-400 px-2.5 py-0.5 rounded-full border border-slate-500/25">${joursOuvresTotal} ouvrés</span>`;
+            document.getElementById('badgeContainer').innerHTML = `<span class="whitespace-nowrap bg-cyan-500/15 text-cyan-300 px-2.5 py-0.5 rounded-full border border-cyan-500/20">${joursGardeReels} Jrs Présence</span><span class="text-slate-500 font-semibold">/</span><span class="whitespace-nowrap bg-slate-500/15 text-slate-400 px-2.5 py-0.5 rounded-full border border-slate-500/25">${joursOuvresTotal} ouvrés</span>`;
 
             let totalNormalHours = 0;
             let totalMajoreHours = 0;
