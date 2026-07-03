@@ -486,6 +486,11 @@
             return `${y}-${m}-${d}`;
         }
 
+        function moisActuelIso() {
+            const maintenant = new Date();
+            return `${maintenant.getFullYear()}-${String(maintenant.getMonth() + 1).padStart(2, '0')}`;
+        }
+
         function calculerJoursFeries(annee) {
             const paques = calculerDatePaques(annee);
 
@@ -516,7 +521,7 @@
         let appState = {
             enfants: [],
             activeEnfantId: null,
-            moisEnCours: "2026-06"
+            moisEnCours: moisActuelIso()
         };
 
         const profilDefaut = (id, prenom) => ({
@@ -577,7 +582,7 @@
             const idInitial = Date.now();
             appState.enfants = [profilDefaut(idInitial, "Mon Enfant")];
             appState.activeEnfantId = idInitial;
-            appState.moisEnCours = "2026-06";
+            appState.moisEnCours = moisActuelIso();
             sauvegarderTout();
         }
 
