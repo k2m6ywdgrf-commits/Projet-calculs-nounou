@@ -437,6 +437,31 @@
                     </div>
                     <input type="file" id="inputImportFichier" accept="application/json,.json" class="hidden" onchange="importerDonnees(event)">
                 </div>
+
+                <div class="glass-card rounded-2xl p-4 space-y-3 border border-cyan-500/20">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-300">☁️ Synchronisation Cloud</h3>
+                        <span id="syncStatusPill" class="text-[10px] font-mono px-2 py-0.5 rounded-full border bg-slate-500/15 text-slate-300 border-slate-500/30">Local</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400">Connectez-vous avec Google pour sauvegarder vos données dans le cloud et les retrouver sur tous vos appareils. L'app reste 100 % fonctionnelle hors-ligne.</p>
+                    <p id="cloudUserEmail" class="text-[11px] text-cyan-200 font-semibold truncate hidden"></p>
+                    <div id="cloudUidBloc" class="hidden p-2 rounded-xl bg-white/5 border border-white/10 space-y-1.5">
+                        <p class="text-[9px] text-slate-400 uppercase tracking-wide font-bold">Ton identifiant (UID) — à mettre dans les règles Firestore</p>
+                        <div class="flex items-center gap-2">
+                            <code id="cloudUserUid" class="flex-1 min-w-0 text-[10px] text-slate-200 font-mono break-all"></code>
+                            <button id="btnCopyUid" onclick="copierUid()" class="shrink-0 text-[10px] font-bold text-cyan-300 border border-cyan-500/30 rounded-lg px-2 py-1 active:scale-95">📋 Copier</button>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="btnCloudSignIn" onclick="window.Cloud && window.Cloud.signIn()" class="flex-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold px-3 py-2 rounded-xl transition active:scale-95">
+                            🔐 Se connecter avec Google
+                        </button>
+                        <button id="btnCloudSignOut" onclick="window.Cloud && window.Cloud.signOut()" class="flex-1 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-xs font-bold px-3 py-2 rounded-xl transition active:scale-95 hidden">
+                            🚪 Se déconnecter
+                        </button>
+                    </div>
+                    <p id="cloudHint" class="text-[10px] text-amber-400/80 hidden">⚙️ Firebase non configuré : renseignez votre objet <code>firebaseConfig</code> dans le module en bas de <code>index.html</code>.</p>
+                </div>
             </div>
 
         </div>
@@ -701,6 +726,132 @@
                 localStorage.setItem('nounoupay_v4_state', JSON.stringify(appState));
             } catch(e) {
                 console.warn("Sauvegarde locale impossible :", e);
+            }
+            // Réplication cloud (no-op si déconnecté ou Firebase non configuré)
+            if (window.Cloud && window.Cloud.push) window.Cloud.push(appState);
+        }
+
+        // ============================================================
+        // PONT APP ↔ FIREBASE (voir module ESM en bas de page)
+        // Toutes les données transitent par ces 4 fonctions window.__*
+        // ============================================================
+
+        // Lecture de l'état local courant, à pousser vers le cloud.
+        window.__getLocalData = () => appState;
+
+        // Application de données venues du cloud SANS re-pousser (évite la boucle).
+        window.__applyCloudData = (data) => {
+            const moisCourant = appState.moisEnCours;
+            const actifCourant = appState.activeEnfantId;
+            appState = normaliserEtat(data);
+            // On garde la vue en cours (mois affiché + enfant sélectionné) intacte.
+            appState.moisEnCours = moisCourant;
+            if (appState.enfants.some(e => e.id === actifCourant)) {
+                appState.activeEnfantId = actifCourant;
+            }
+            try {
+                localStorage.setItem('nounoupay_v4_state', JSON.stringify(appState));
+            } catch(e) { /* stockage plein / indisponible : on garde l'état en mémoire */ }
+            renderTabsEnfants();
+            chargerProfilEnEcran(appState.activeEnfantId);
+            mettreAJourCompteurs();
+        };
+
+        // Fusion NON destructive local + cloud (1re connexion) : on ne perd rien.
+        // On part du local et on ajoute ce que le cloud a en plus.
+        window.__mergeData = (cloud) => {
+            const merged = normaliserEtat(appState);
+            const cloudNorm = normaliserEtat(cloud);
+            const parId = {};
+            merged.enfants.forEach(e => { parId[e.id] = e; });
+            cloudNorm.enfants.forEach(ce => {
+                const local = parId[ce.id];
+                if (!local) {
+                    // Profil présent uniquement dans le cloud → on l'ajoute.
+                    merged.enfants.push(ce);
+                    return;
+                }
+                // Profil commun : on complète les cartes mensuelles sans écraser le local.
+                local.acomptesParMois = Object.assign({}, ce.acomptesParMois, local.acomptesParMois);
+                local.agendaCustom = Object.assign({}, ce.agendaCustom, local.agendaCustom);
+            });
+            return merged;
+        };
+
+        // Notification de changement d'état d'authentification / synchro → UI.
+        window.__onAuthChange = (user, status) => updateSyncUI(user, status);
+
+        // Copie l'UID du compte connecté (pour le coller dans les Règles Firestore).
+        function copierUid() {
+            const uid = document.getElementById('cloudUserUid');
+            const btn = document.getElementById('btnCopyUid');
+            if (!uid || !uid.innerText) return;
+            const finaliser = () => {
+                if (!btn) return;
+                const ancien = btn.innerText;
+                btn.innerText = '✓ Copié';
+                setTimeout(() => { btn.innerText = ancien; }, 1500);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(uid.innerText).then(finaliser, finaliser);
+            } else {
+                finaliser();
+            }
+        }
+
+        // Met à jour l'encart « Synchronisation Cloud » dans Configuration.
+        function updateSyncUI(user, status) {
+            const pill = document.getElementById('syncStatusPill');
+            const btnIn = document.getElementById('btnCloudSignIn');
+            const btnOut = document.getElementById('btnCloudSignOut');
+            const emailEl = document.getElementById('cloudUserEmail');
+            const uidBloc = document.getElementById('cloudUidBloc');
+            const uidEl = document.getElementById('cloudUserUid');
+            const hint = document.getElementById('cloudHint');
+            if (!pill) return;
+
+            const setPill = (txt, cls) => {
+                pill.innerText = txt;
+                pill.className = "text-[10px] font-mono px-2 py-0.5 rounded-full border " + cls;
+            };
+
+            if (status === 'non-configure') {
+                setPill("Non configuré", "bg-slate-500/15 text-slate-300 border-slate-500/30");
+                if (btnIn) btnIn.classList.add('hidden');
+                if (btnOut) btnOut.classList.add('hidden');
+                if (emailEl) emailEl.classList.add('hidden');
+                if (uidBloc) uidBloc.classList.add('hidden');
+                if (hint) hint.classList.remove('hidden');
+                return;
+            }
+            if (hint) hint.classList.add('hidden');
+
+            if (!user) {
+                setPill("Local", "bg-slate-500/15 text-slate-300 border-slate-500/30");
+                if (btnIn) btnIn.classList.remove('hidden');
+                if (btnOut) btnOut.classList.add('hidden');
+                if (emailEl) emailEl.classList.add('hidden');
+                if (uidBloc) uidBloc.classList.add('hidden');
+                return;
+            }
+
+            if (btnIn) btnIn.classList.add('hidden');
+            if (btnOut) btnOut.classList.remove('hidden');
+            if (emailEl) {
+                emailEl.classList.remove('hidden');
+                emailEl.innerText = user.email || user.displayName || "Connecté";
+            }
+            if (uidBloc && uidEl) {
+                uidBloc.classList.remove('hidden');
+                uidEl.innerText = user.uid || '';
+            }
+
+            if (status === 'saving') {
+                setPill("Enregistrement…", "bg-amber-500/15 text-amber-300 border-amber-500/30");
+            } else if (status === 'error') {
+                setPill("Erreur", "bg-red-500/15 text-red-300 border-red-500/30");
+            } else {
+                setPill("Synchronisé", "bg-emerald-500/15 text-emerald-300 border-emerald-500/30");
             }
         }
 
@@ -1617,6 +1768,148 @@
         }
 
         initApp();
+    </script>
+
+    <!-- ============================================================
+         MODULE FIREBASE (ESM) — Sauvegarde cloud + synchro Google
+         Le SDK v12 est en modules ; il est chargé à part du script
+         principal, auquel il se relie via les fonctions window.__*.
+         ============================================================ -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+        import {
+            getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+            getRedirectResult, onAuthStateChanged, signOut
+        } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+        import {
+            initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+            doc, onSnapshot, setDoc, deleteDoc, serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+        // Config Firebase du projet NounouPay (app Web).
+        // L'apiKey n'est PAS un secret : c'est un identifiant public. La sécurité
+        // repose sur les Règles Firestore + l'authentification Google.
+        const firebaseConfig = {
+            apiKey: "AIzaSyAr-XNrujokxU88NRuJCoQrHEpVUt1XpPA",
+            authDomain: "nounoupay-b6f24.firebaseapp.com",
+            projectId: "nounoupay-b6f24",
+            storageBucket: "nounoupay-b6f24.firebasestorage.app",
+            messagingSenderId: "146344900911",
+            appId: "1:146344900911:web:3c3d1ab041a734432649da"
+        };
+
+        const notify = (user, status) => {
+            if (typeof window.__onAuthChange === 'function') window.__onAuthChange(user, status);
+        };
+
+        // Tant que la config n'est pas renseignée, on n'initialise rien
+        // (l'app continue de fonctionner en 100 % local).
+        if (String(firebaseConfig.apiKey).startsWith('TODO')) {
+            notify(null, 'non-configure');
+        } else {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const provider = new GoogleAuthProvider();
+            // Cache persistant = les données restent disponibles hors-ligne.
+            const db = initializeFirestore(app, {
+                localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+            });
+
+            let currentUser = null;
+            let unsub = null;
+            let pushTimer = null;
+            let dernierPayload = null;
+
+            // Base COMMUNE : les deux comptes (toi + ta copine) pointent vers le
+            // même document → même vue, mêmes données. Les Règles Firestore
+            // n'autorisent que vos deux UID (voir la config console).
+            const SHARED_SPACE = 'couple';
+            const spaceDoc = () => doc(db, 'shared', SHARED_SPACE);
+
+            const Cloud = {
+                isSignedIn: () => !!currentUser,
+
+                async signIn() {
+                    try {
+                        await signInWithPopup(auth, provider);
+                    } catch (e) {
+                        // Popup bloqué (souvent sur mobile) → repli en redirection.
+                        try { await signInWithRedirect(auth, provider); }
+                        catch (e2) { notify(null, 'error'); }
+                    }
+                },
+
+                async signOut() {
+                    try { await signOut(auth); } catch (e) { /* ignore */ }
+                },
+
+                // setDoc débouncé : { payloadJSON, updatedAt }.
+                push(data) {
+                    if (!currentUser) return;
+                    dernierPayload = JSON.stringify(data);
+                    notify(currentUser, 'saving');
+                    clearTimeout(pushTimer);
+                    pushTimer = setTimeout(async () => {
+                        try {
+                            await setDoc(spaceDoc(), {
+                                payloadJSON: dernierPayload,
+                                updatedAt: serverTimestamp()
+                            });
+                            notify(currentUser, 'synced');
+                        } catch (e) {
+                            notify(currentUser, 'error');
+                        }
+                    }, 800);
+                },
+
+                async deleteRemote() {
+                    if (!currentUser) return;
+                    try { await deleteDoc(spaceDoc()); } catch (e) { /* ignore */ }
+                }
+            };
+            window.Cloud = Cloud;
+
+            // Consomme un éventuel retour de connexion par redirection (mobile).
+            getRedirectResult(auth).catch(() => {});
+
+            onAuthStateChanged(auth, (user) => {
+                if (unsub) { unsub(); unsub = null; }
+                currentUser = user;
+
+                if (!user) { notify(null, 'signedout'); return; }
+                notify(user, 'synced');
+
+                let first = true;
+                unsub = onSnapshot(spaceDoc(), (snap) => {
+                    // Ignore l'écho de nos propres écritures (anti-boucle).
+                    if (snap.metadata.hasPendingWrites) return;
+
+                    if (!snap.exists()) {
+                        // Cloud vide → migration montante des données locales.
+                        if (first) { first = false; Cloud.push(window.__getLocalData()); }
+                        return;
+                    }
+
+                    let cloud;
+                    try { cloud = JSON.parse(snap.data().payloadJSON); }
+                    catch (e) { return; }
+
+                    if (first) {
+                        // 1re connexion : fusion sûre local + cloud (aucune perte).
+                        first = false;
+                        const merged = window.__mergeData(cloud);
+                        window.__applyCloudData(merged);
+                        if (JSON.stringify(merged) !== JSON.stringify(cloud)) Cloud.push(merged);
+                        notify(user, 'synced');
+                        return;
+                    }
+
+                    // Mise à jour venue d'un autre appareil.
+                    window.__applyCloudData(cloud);
+                    notify(user, 'synced');
+                }, () => notify(currentUser, 'error'));
+            });
+        }
     </script>
 </body>
 </html>
