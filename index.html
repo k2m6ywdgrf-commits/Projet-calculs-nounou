@@ -461,6 +461,7 @@
                         </button>
                     </div>
                     <p id="cloudHint" class="text-[10px] text-amber-400/80 hidden">⚙️ Firebase non configuré : renseignez votre objet <code>firebaseConfig</code> dans le module en bas de <code>index.html</code>.</p>
+                    <p id="cloudError" class="text-[10px] text-red-300 font-mono break-words hidden"></p>
                 </div>
             </div>
 
@@ -781,6 +782,14 @@
         // Notification de changement d'état d'authentification / synchro → UI.
         window.__onAuthChange = (user, status) => updateSyncUI(user, status);
 
+        // Affiche (ou masque) le vrai message d'erreur Firebase dans l'encart.
+        window.__cloudError = (msg) => {
+            const el = document.getElementById('cloudError');
+            if (!el) return;
+            if (msg) { el.innerText = '⚠️ ' + msg; el.classList.remove('hidden'); }
+            else { el.classList.add('hidden'); }
+        };
+
         // Copie l'UID du compte connecté (pour le coller dans les Règles Firestore).
         function copierUid() {
             const uid = document.getElementById('cloudUserUid');
@@ -852,6 +861,8 @@
                 setPill("Erreur", "bg-red-500/15 text-red-300 border-red-500/30");
             } else {
                 setPill("Synchronisé", "bg-emerald-500/15 text-emerald-300 border-emerald-500/30");
+                const errEl = document.getElementById('cloudError');
+                if (errEl) errEl.classList.add('hidden');
             }
         }
 
@@ -1830,12 +1841,21 @@
                 isSignedIn: () => !!currentUser,
 
                 async signIn() {
+                    if (typeof window.__cloudError === 'function') window.__cloudError('');
                     try {
                         await signInWithPopup(auth, provider);
                     } catch (e) {
-                        // Popup bloqué (souvent sur mobile) → repli en redirection.
-                        try { await signInWithRedirect(auth, provider); }
-                        catch (e2) { notify(null, 'error'); }
+                        const code = (e && e.code) || '';
+                        // Annulation volontaire → on ne fait rien.
+                        if (code === 'auth/cancelled-popup-request' || code === 'auth/popup-closed-by-user') return;
+                        // Popup bloqué / non supporté → repli en redirection.
+                        if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+                            try { await signInWithRedirect(auth, provider); return; }
+                            catch (e2) { e = e2; }
+                        }
+                        const msg = ((e && e.code) ? e.code : 'erreur') + ((e && e.message) ? ' — ' + e.message : '');
+                        if (typeof window.__cloudError === 'function') window.__cloudError(msg);
+                        notify(null, 'error');
                     }
                 },
 
@@ -1857,6 +1877,7 @@
                             });
                             notify(currentUser, 'synced');
                         } catch (e) {
+                            if (typeof window.__cloudError === 'function') window.__cloudError('écriture: ' + ((e && e.code) || '') + ' ' + ((e && e.message) || ''));
                             notify(currentUser, 'error');
                         }
                     }, 800);
@@ -1870,7 +1891,10 @@
             window.Cloud = Cloud;
 
             // Consomme un éventuel retour de connexion par redirection (mobile).
-            getRedirectResult(auth).catch(() => {});
+            getRedirectResult(auth).catch((e) => {
+                const msg = ((e && e.code) ? e.code : '') + ((e && e.message) ? ' — ' + e.message : '');
+                if (msg && typeof window.__cloudError === 'function') window.__cloudError(msg);
+            });
 
             onAuthStateChanged(auth, (user) => {
                 if (unsub) { unsub(); unsub = null; }
@@ -1907,7 +1931,10 @@
                     // Mise à jour venue d'un autre appareil.
                     window.__applyCloudData(cloud);
                     notify(user, 'synced');
-                }, () => notify(currentUser, 'error'));
+                }, (e) => {
+                    if (typeof window.__cloudError === 'function') window.__cloudError('lecture: ' + ((e && e.code) || '') + ' ' + ((e && e.message) || ''));
+                    notify(currentUser, 'error');
+                });
             });
         }
     </script>
