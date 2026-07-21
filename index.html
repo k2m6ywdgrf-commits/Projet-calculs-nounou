@@ -75,7 +75,12 @@
             <div class="flex justify-between items-center mb-3">
                 <div>
                     <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Suivi de Garde</span>
-                    <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">NounouPay</h1>
+                    <div class="flex items-center gap-1.5">
+                        <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">NounouPay</h1>
+                        <button id="headerCloudIcon" onclick="switchTab('settings')" title="Cloud" class="hidden items-center text-slate-500 transition-colors active:scale-90">
+                            <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="flex items-center rounded-2xl overflow-hidden glass-card border border-cyan-500/25 shadow-[0_0_16px_rgba(6,182,212,0.1)]">
                     <button onclick="changerMoisRelative(-1)" class="h-10 w-9 flex items-center justify-center text-cyan-400 hover:bg-white/10 active:bg-cyan-500/20 transition-all active:scale-90 border-r border-white/5 text-lg leading-none">‹</button>
@@ -817,11 +822,21 @@
             const uidBloc = document.getElementById('cloudUidBloc');
             const uidEl = document.getElementById('cloudUserUid');
             const hint = document.getElementById('cloudHint');
+            const cloudIcon = document.getElementById('headerCloudIcon');
             if (!pill) return;
 
             const setPill = (txt, cls) => {
                 pill.innerText = txt;
                 pill.className = "text-[10px] font-mono px-2 py-0.5 rounded-full border " + cls;
+            };
+
+            // Petite icône nuage dans le header (indicateur permanent).
+            const setHeaderCloud = (visible, couleurCls, pulse, titre) => {
+                if (!cloudIcon) return;
+                if (!visible) { cloudIcon.className = "hidden items-center"; return; }
+                cloudIcon.className = "inline-flex items-center transition-colors active:scale-90 "
+                    + couleurCls + (pulse ? " animate-pulse" : "");
+                cloudIcon.title = titre;
             };
 
             if (status === 'non-configure') {
@@ -831,6 +846,7 @@
                 if (emailEl) emailEl.classList.add('hidden');
                 if (uidBloc) uidBloc.classList.add('hidden');
                 if (hint) hint.classList.remove('hidden');
+                setHeaderCloud(false);
                 return;
             }
             if (hint) hint.classList.add('hidden');
@@ -841,6 +857,7 @@
                 if (btnOut) btnOut.classList.add('hidden');
                 if (emailEl) emailEl.classList.add('hidden');
                 if (uidBloc) uidBloc.classList.add('hidden');
+                setHeaderCloud(true, "text-slate-500", false, "Cloud disponible — non connecté");
                 return;
             }
 
@@ -857,10 +874,13 @@
 
             if (status === 'saving') {
                 setPill("Enregistrement…", "bg-amber-500/15 text-amber-300 border-amber-500/30");
+                setHeaderCloud(true, "text-amber-400", true, "Enregistrement en cours…");
             } else if (status === 'error') {
                 setPill("Erreur", "bg-red-500/15 text-red-300 border-red-500/30");
+                setHeaderCloud(true, "text-red-400", false, "Erreur de synchronisation");
             } else {
                 setPill("Synchronisé", "bg-emerald-500/15 text-emerald-300 border-emerald-500/30");
+                setHeaderCloud(true, "text-emerald-400", false, "Synchronisé avec le cloud");
                 const errEl = document.getElementById('cloudError');
                 if (errEl) errEl.classList.add('hidden');
             }
