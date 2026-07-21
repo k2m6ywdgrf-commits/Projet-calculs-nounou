@@ -872,7 +872,8 @@
                     + escapeHtml(user.email || user.displayName || '') + '</span></p>';
             }
             if (meta && (meta.editorName || meta.updatedAt)) {
-                let qui = meta.editorName ? escapeHtml(meta.editorName) : 'Inconnu';
+                const prenom = meta.editorName ? String(meta.editorName).trim().split(/\s+/)[0] : '';
+                let qui = prenom ? escapeHtml(prenom) : 'Inconnu';
                 if (user && meta.editorUid && meta.editorUid === user.uid) qui = 'vous';
                 const quand = meta.updatedAt ? formatDateHeureFr(meta.updatedAt) : '';
                 html += '<p class="text-[11px] text-slate-400 mt-1">Dernière modif : <span class="text-white font-semibold">'
