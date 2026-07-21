@@ -1743,27 +1743,27 @@
          principal, auquel il se relie via les fonctions window.__*.
          ============================================================ -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
         import {
             getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
             getRedirectResult, onAuthStateChanged, signOut
-        } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+        } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
         import {
             initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
             doc, onSnapshot, setDoc, deleteDoc, serverTimestamp
-        } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+        } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
-        // ⬇️⬇️⬇️  À REMPLACER par VOTRE config (console Firebase → app Web) ⬇️⬇️⬇️
+        // Config Firebase du projet NounouPay (app Web).
+        // L'apiKey n'est PAS un secret : c'est un identifiant public. La sécurité
+        // repose sur les Règles Firestore + l'authentification Google.
         const firebaseConfig = {
-            apiKey: "TODO_COLLER_VOTRE_CONFIG_ICI",
-            authDomain: "TODO.firebaseapp.com",
-            projectId: "TODO",
-            storageBucket: "TODO.appspot.com",
-            messagingSenderId: "TODO",
-            appId: "TODO"
+            apiKey: "AIzaSyAr-XNrujokxU88NRuJCoQrHEpVUt1XpPA",
+            authDomain: "nounoupay-b6f24.firebaseapp.com",
+            projectId: "nounoupay-b6f24",
+            storageBucket: "nounoupay-b6f24.firebasestorage.app",
+            messagingSenderId: "146344900911",
+            appId: "1:146344900911:web:3c3d1ab041a734432649da"
         };
-        // ⬆️⬆️⬆️  (L'apiKey n'est PAS un secret : c'est un identifiant public. La   ⬆️⬆️⬆️
-        //          sécurité repose sur les Règles Firestore + l'authentification.)
 
         const notify = (user, status) => {
             if (typeof window.__onAuthChange === 'function') window.__onAuthChange(user, status);
