@@ -94,15 +94,6 @@
             <div id="tabsEnfantsContainer" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
         </header>
 
-        <nav class="relative z-10 p-1 rounded-xl flex bg-slate-950/50 border border-white/5 mb-4 shrink-0">
-            <button onclick="switchTab('dashboard')" id="btnNavDashboard" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all text-cyan-400 bg-white/10 shadow-sm flex items-center justify-center gap-1.5">
-                <span>📊</span> Dashboard
-            </button>
-            <button onclick="switchTab('settings')" id="btnNavSettings" class="flex-1 py-2 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-white flex items-center justify-center gap-1.5">
-                <span>⚙️</span> Configuration
-            </button>
-        </nav>
-
         <div class="flex-1 overflow-y-auto no-scrollbar relative z-10 w-full overflow-x-hidden pb-4">
             
             <div id="tabDashboard" class="space-y-4">
@@ -471,6 +462,17 @@
             </div>
 
         </div>
+
+        <nav class="relative z-10 shrink-0 grid grid-cols-2 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 px-2" style="padding-bottom: max(env(safe-area-inset-bottom), 0.65rem); background: rgba(255, 255, 255, 0.07); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid rgba(255, 255, 255, 0.12);">
+            <button onclick="switchTab('dashboard')" id="btnNavDashboard" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-cyan-400">
+                <span class="text-xl leading-none">📊</span>
+                <span class="text-[10px] font-bold tracking-wide">Dashboard</span>
+            </button>
+            <button onclick="switchTab('settings')" id="btnNavSettings" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-slate-500">
+                <span class="text-xl leading-none">⚙️</span>
+                <span class="text-[10px] font-medium tracking-wide">Configuration</span>
+            </button>
+        </nav>
 
         <div id="modalSelecteurMois" class="hidden absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
             <div class="glass-card rounded-2xl p-5 w-full max-w-xs border border-cyan-500/25 shadow-xl">
@@ -1869,14 +1871,18 @@
             if (tabId === 'dashboard') {
                 dash.classList.remove('hidden');
                 sett.classList.add('hidden');
-                btnDash.className = "flex-1 py-2 text-xs font-bold rounded-lg transition-all text-cyan-400 bg-white/10 shadow-sm flex items-center justify-center gap-1.5";
-                btnSett.className = "flex-1 py-2 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-white flex items-center justify-center gap-1.5";
+                btnDash.className = "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-cyan-400";
+                btnDash.querySelector('span:last-child').className = "text-[10px] font-bold tracking-wide";
+                btnSett.className = "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-slate-500";
+                btnSett.querySelector('span:last-child').className = "text-[10px] font-medium tracking-wide";
                 mettreAJourCompteurs();
             } else {
                 dash.classList.add('hidden');
                 sett.classList.remove('hidden');
-                btnDash.className = "flex-1 py-2 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-white flex items-center justify-center gap-1.5";
-                btnSett.className = "flex-1 py-2 text-xs font-bold rounded-lg transition-all text-purple-400 bg-white/10 shadow-sm flex items-center justify-center gap-1.5";
+                btnDash.className = "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-slate-500";
+                btnDash.querySelector('span:last-child').className = "text-[10px] font-medium tracking-wide";
+                btnSett.className = "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-purple-400";
+                btnSett.querySelector('span:last-child').className = "text-[10px] font-bold tracking-wide";
                 renderImportCotisationsOutil(getEnfantActif());
             }
         }
