@@ -375,10 +375,10 @@
                         </div>
                     </div>
 
-                    <div class="pt-1 border-t border-white/5">
-                        <button onclick="toggleHistoriqueTaux()" class="w-full flex items-center justify-between text-[11px] font-bold text-slate-400 hover:text-slate-200 transition py-1">
+                    <div id="wrapHistoriqueTaux" class="hidden pt-1 border-t border-white/5">
+                        <button onclick="toggleHistorique('Taux')" class="w-full flex items-center justify-between text-[11px] font-bold text-slate-400 hover:text-slate-200 transition py-1">
                             <span>🕑 Historique des taux</span>
-                            <span id="chevronHistoriqueTaux" class="text-slate-500 transition-transform">▾</span>
+                            <span id="chevronHistoriqueTaux" class="text-slate-500 transition-transform inline-block">▾</span>
                         </button>
                         <div id="contentHistoriqueTaux" class="hidden space-y-1.5 pt-2">
                             <div id="listeHistoriqueTaux" class="space-y-1.5"></div>
@@ -467,6 +467,16 @@
                             <button onclick="ajouterLigneRepas()" class="text-amber-400 hover:text-amber-300 text-xs font-bold">+ Ajouter une ration</button>
                         </div>
                         <div id="listeRationsRepas" class="space-y-2"></div>
+
+                        <div id="wrapHistoriqueRepas" class="hidden pt-1 border-t border-white/5">
+                            <button onclick="toggleHistorique('Repas')" class="w-full flex items-center justify-between text-[11px] font-bold text-slate-400 hover:text-slate-200 transition py-1">
+                                <span>🕑 Historique des frais</span>
+                                <span id="chevronHistoriqueRepas" class="text-slate-500 transition-transform inline-block">▾</span>
+                            </button>
+                            <div id="contentHistoriqueRepas" class="hidden space-y-1.5 pt-2">
+                                <div id="listeHistoriqueRepas" class="space-y-1.5"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -485,6 +495,16 @@
                             <button onclick="ajouterLigneKm()" class="text-sky-400 hover:text-sky-300 text-xs font-bold">+ Ajouter un trajet</button>
                         </div>
                         <div id="listeKmTrajets" class="space-y-2"></div>
+
+                        <div id="wrapHistoriqueKm" class="hidden pt-1 border-t border-white/5">
+                            <button onclick="toggleHistorique('Km')" class="w-full flex items-center justify-between text-[11px] font-bold text-slate-400 hover:text-slate-200 transition py-1">
+                                <span>🕑 Historique des indemnités</span>
+                                <span id="chevronHistoriqueKm" class="text-slate-500 transition-transform inline-block">▾</span>
+                            </button>
+                            <div id="contentHistoriqueKm" class="hidden space-y-1.5 pt-2">
+                                <div id="listeHistoriqueKm" class="space-y-1.5"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -527,6 +547,16 @@
                             <button onclick="ajouterLigneCotisation()" class="text-red-400 hover:text-red-300 text-xs font-bold">+ Ajouter</button>
                         </div>
                         <div id="listeCotisationsSociales" class="space-y-2"></div>
+
+                        <div id="wrapHistoriqueCotisations" class="hidden pt-1 border-t border-white/5">
+                            <button onclick="toggleHistorique('Cotisations')" class="w-full flex items-center justify-between text-[11px] font-bold text-slate-400 hover:text-slate-200 transition py-1">
+                                <span>🕑 Historique des cotisations</span>
+                                <span id="chevronHistoriqueCotisations" class="text-slate-500 transition-transform inline-block">▾</span>
+                            </button>
+                            <div id="contentHistoriqueCotisations" class="hidden space-y-1.5 pt-2">
+                                <div id="listeHistoriqueCotisations" class="space-y-1.5"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -790,7 +820,10 @@
             ],
             agendaCustom: {},
             payesValidees: {},
-            tauxHistorique: []
+            tauxHistorique: [],
+            repasHistorique: [],
+            kmHistorique: [],
+            cotisationsHistorique: []
         });
 
         document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
@@ -885,21 +918,48 @@
             enf.payesValidees = payes;
 
             // Historique des taux : liste chronologique { date, tauxNormal, tauxMajore, majorationPct }.
-            enf.tauxHistorique = normaliserListe(enf.tauxHistorique, 'th', item => ({
-                date: /^\d{4}-\d{2}-\d{2}$/.test(item.date) ? item.date : formatDateIso(new Date()),
-                tauxNormal: toNombre(item.tauxNormal, 0),
-                tauxMajore: toNombre(item.tauxMajore, 0),
-                majorationPct: toNombre(item.majorationPct, 0)
-            }));
-            // Amorce : on garde une trace du taux actuel comme point de départ.
+            enf.tauxHistorique = normaliserListe(enf.tauxHistorique, 'th', item => {
+                const o = {
+                    date: /^\d{4}-\d{2}-\d{2}$/.test(item.date) ? item.date : formatDateIso(new Date()),
+                    tauxNormal: toNombre(item.tauxNormal, 0),
+                    tauxMajore: toNombre(item.tauxMajore, 0),
+                    majorationPct: toNombre(item.majorationPct, 0)
+                };
+                if (item.initial) o.initial = true;
+                return o;
+            });
+            // Amorce : on garde une trace du taux actuel comme point de départ
+            // (marquée « initial » pour ne jamais être écrasée par une modif du jour).
             if (enf.tauxHistorique.length === 0) {
                 enf.tauxHistorique.push({
                     date: formatDateIso(new Date()),
                     tauxNormal: enf.tauxNormal,
                     tauxMajore: enf.tauxMajore,
-                    majorationPct: enf.majorationPct
+                    majorationPct: enf.majorationPct,
+                    initial: true
                 });
             }
+
+            // Historiques des listes (repas / km / cotisations) : snapshots datés.
+            const today = formatDateIso(new Date());
+            const normHisto = (hist, projeter, source) => {
+                let out = Array.isArray(hist)
+                    ? hist.filter(h => h && typeof h === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(h.date))
+                          .map(h => {
+                              const o = { date: h.date, items: Array.isArray(h.items) ? h.items.map(projeter) : [] };
+                              if (h.initial) o.initial = true;
+                              return o;
+                          })
+                    : [];
+                if (out.length === 0) out = [{ date: today, items: (source || []).map(projeter), initial: true }];
+                return out;
+            };
+            enf.repasHistorique = normHisto(enf.repasHistorique,
+                it => ({ nom: typeof it.nom === 'string' ? it.nom : '', prix: toNombre(it.prix, 0) }), enf.repasList);
+            enf.kmHistorique = normHisto(enf.kmHistorique,
+                it => ({ nom: typeof it.nom === 'string' ? it.nom : '', distanceKm: toNombre(it.distanceKm, 0), tauxKm: toNombre(it.tauxKm, 0) }), enf.kmTrajets);
+            enf.cotisationsHistorique = normHisto(enf.cotisationsHistorique,
+                it => ({ nom: typeof it.nom === 'string' ? it.nom : '', baseType: ['net', 'heure', 'net_maj', 'heure_maj'].includes(it.baseType) ? it.baseType : 'net', taux: toNombre(it.taux, 0) }), enf.cotisations);
 
             return enf;
         }
@@ -1316,6 +1376,9 @@
             renderListeCotisationsSociales(enf);
             renderImportCotisationsOutil(enf);
             renderHistoriqueTaux(enf);
+            renderHistoriqueListe(enf, 'repasHistorique', 'Repas', _fmtRepas);
+            renderHistoriqueListe(enf, 'kmHistorique', 'Km', _fmtKm);
+            renderHistoriqueListe(enf, 'cotisationsHistorique', 'Cotisations', _fmtCot);
 
             document.getElementById('btnSupprimerEnfant').style.display = appState.enfants.length > 1 ? 'inline-block' : 'none';
             mettreAJourDateVisuelle();
@@ -1376,48 +1439,39 @@
             mettreAJourCompteurs();
         }
 
-        // --- HISTORIQUE DES TAUX ---
-        // Enregistre le taux courant. Un seul point par jour (upsert) : les
-        // saisies successives d'une même journée mettent à jour l'entrée du
-        // jour ; on ne conserve que les changements réels.
+        // ============================================================
+        // HISTORIQUE DES PARAMÈTRES — taux (valeurs) + listes (repas, km,
+        // cotisations). Un seul point par jour (upsert), on ne garde que les
+        // changements réels, et le menu ne s'affiche que s'il existe un
+        // historique (au moins un changement au-delà de l'amorce).
+        // ============================================================
         function enregistrerHistoriqueTaux(enf) {
             if (!Array.isArray(enf.tauxHistorique)) enf.tauxHistorique = [];
             const hist = enf.tauxHistorique;
             const today = formatDateIso(new Date());
-            const cur = {
-                tauxNormal: enf.tauxNormal,
-                tauxMajore: enf.tauxMajore,
-                majorationPct: enf.majorationPct
-            };
+            const cur = { tauxNormal: enf.tauxNormal, tauxMajore: enf.tauxMajore, majorationPct: enf.majorationPct };
             const memeValeurs = (a, b) => a && b
-                && a.tauxNormal === b.tauxNormal
-                && a.tauxMajore === b.tauxMajore
-                && a.majorationPct === b.majorationPct;
+                && a.tauxNormal === b.tauxNormal && a.tauxMajore === b.tauxMajore && a.majorationPct === b.majorationPct;
 
             const dernier = hist[hist.length - 1];
-            if (dernier && dernier.date === today) {
-                // On révise l'entrée du jour.
+            if (dernier && dernier.date === today && !dernier.initial) {
                 dernier.tauxNormal = cur.tauxNormal;
                 dernier.tauxMajore = cur.tauxMajore;
                 dernier.majorationPct = cur.majorationPct;
-                // Si elle redevient identique à la veille, on la retire (pas de doublon).
                 if (hist.length >= 2 && memeValeurs(hist[hist.length - 2], dernier)) hist.pop();
             } else if (!memeValeurs(dernier, cur)) {
-                hist.push(Object.assign({ id: 'th_' + Date.now(), date: today }, cur));
+                hist.push(Object.assign({ date: today }, cur));
             }
             renderHistoriqueTaux(enf);
         }
 
         function renderHistoriqueTaux(enf) {
+            const wrap = document.getElementById('wrapHistoriqueTaux');
             const container = document.getElementById('listeHistoriqueTaux');
-            if (!container) return;
-            const hist = Array.isArray(enf.tauxHistorique) ? enf.tauxHistorique.slice() : [];
-            if (hist.length <= 1) {
-                const depuis = hist[0] ? formatDateFrCourt(hist[0].date) : '—';
-                container.innerHTML = `<p class="text-[10px] italic text-slate-500 text-center py-1">Aucun changement enregistré — taux actuel depuis le ${depuis}.</p>`;
-                return;
-            }
-            // Plus récent en haut ; on affiche l'évolution du taux normal.
+            if (!wrap || !container) return;
+            const hist = Array.isArray(enf.tauxHistorique) ? enf.tauxHistorique : [];
+            if (hist.length <= 1) { wrap.classList.add('hidden'); return; }
+            wrap.classList.remove('hidden');
             container.innerHTML = hist.slice().reverse().map((h, i, arr) => {
                 const precedent = arr[i + 1];
                 let variation = '';
@@ -1445,11 +1499,76 @@
             return `${p[2]}/${p[1]}/${p[0]}`;
         }
 
-        function toggleHistoriqueTaux() {
-            const content = document.getElementById('contentHistoriqueTaux');
-            const chevron = document.getElementById('chevronHistoriqueTaux');
-            const ouvert = content.classList.toggle('hidden');
-            if (chevron) chevron.style.transform = ouvert ? '' : 'rotate(180deg)';
+        // Bascule générique d'un menu d'historique (clé = 'Taux','Repas','Km','Cotisations').
+        function toggleHistorique(cle) {
+            const content = document.getElementById('contentHistorique' + cle);
+            const chevron = document.getElementById('chevronHistorique' + cle);
+            if (!content) return;
+            const nowHidden = content.classList.toggle('hidden');
+            if (chevron) chevron.style.transform = nowHidden ? '' : 'rotate(180deg)';
+        }
+
+        // Snapshot daté d'une liste (upsert par jour, dédoublonné si inchangé).
+        function enregistrerHistoriqueListe(enf, champHisto, items, projeter) {
+            if (!Array.isArray(enf[champHisto])) enf[champHisto] = [];
+            const hist = enf[champHisto];
+            const today = formatDateIso(new Date());
+            const snap = (items || []).map(projeter);
+            const memes = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+            const dernier = hist[hist.length - 1];
+            if (dernier && dernier.date === today && !dernier.initial) {
+                dernier.items = snap;
+                if (hist.length >= 2 && memes(hist[hist.length - 2].items, snap)) hist.pop();
+            } else if (!dernier || !memes(dernier.items, snap)) {
+                hist.push({ date: today, items: snap });
+            }
+        }
+
+        function renderHistoriqueListe(enf, champHisto, cle, formatItem) {
+            const wrap = document.getElementById('wrapHistorique' + cle);
+            const container = document.getElementById('listeHistorique' + cle);
+            if (!wrap || !container) return;
+            const hist = Array.isArray(enf[champHisto]) ? enf[champHisto] : [];
+            if (hist.length <= 1) { wrap.classList.add('hidden'); return; }
+            wrap.classList.remove('hidden');
+            container.innerHTML = hist.slice().reverse().map((h, i) => {
+                const actuel = i === 0 ? '<span class="text-[9px] bg-cyan-500/15 text-cyan-300 border border-cyan-500/25 rounded-full px-1.5 py-0.5 ml-1">actuel</span>' : '';
+                const resume = (h.items && h.items.length)
+                    ? h.items.map(formatItem).join(' · ')
+                    : '<span class="italic text-slate-600">aucune ligne</span>';
+                return `<div class="text-[11px] bg-white/5 border border-white/5 rounded-lg px-2.5 py-1.5">
+                    <span class="text-slate-400">${formatDateFrCourt(h.date)}${actuel}</span>
+                    <div class="text-[10px] text-slate-300 mt-0.5 leading-snug">${resume}</div>
+                </div>`;
+            }).join('');
+        }
+
+        // Projections (champs suivis) + formats d'affichage par catégorie.
+        const _projRepas = it => ({ nom: it.nom, prix: toNombre(it.prix, 0) });
+        const _projKm = it => ({ nom: it.nom, distanceKm: toNombre(it.distanceKm, 0), tauxKm: toNombre(it.tauxKm, 0) });
+        const _projCot = it => ({ nom: it.nom, baseType: it.baseType, taux: toNombre(it.taux, 0) });
+        const _fmtRepas = it => `${escapeHtml(it.nom || '—')} ${Number(it.prix).toFixed(2)}€`;
+        const _fmtKm = it => `${escapeHtml(it.nom || '—')} ${it.distanceKm}km×${Number(it.tauxKm).toFixed(2)}€`;
+        const _fmtCot = it => {
+            const pourcent = (it.baseType === 'net' || it.baseType === 'net_maj');
+            const suffixe = (it.baseType === 'net_maj' || it.baseType === 'heure_maj') ? ' (h. sup.)' : '';
+            return `${escapeHtml(it.nom || '—')} ${it.taux}${pourcent ? '%' : '€/h'}${suffixe}`;
+        };
+
+        function majHistoriqueRepas() {
+            const enf = getEnfantActif(); if (!enf) return;
+            enregistrerHistoriqueListe(enf, 'repasHistorique', enf.repasList, _projRepas);
+            renderHistoriqueListe(enf, 'repasHistorique', 'Repas', _fmtRepas);
+        }
+        function majHistoriqueKm() {
+            const enf = getEnfantActif(); if (!enf) return;
+            enregistrerHistoriqueListe(enf, 'kmHistorique', enf.kmTrajets, _projKm);
+            renderHistoriqueListe(enf, 'kmHistorique', 'Km', _fmtKm);
+        }
+        function majHistoriqueCotisations() {
+            const enf = getEnfantActif(); if (!enf) return;
+            enregistrerHistoriqueListe(enf, 'cotisationsHistorique', enf.cotisations, _projCot);
+            renderHistoriqueListe(enf, 'cotisationsHistorique', 'Cotisations', _fmtCot);
         }
 
         // --- GESTION DES REPAS ---
@@ -1474,6 +1593,7 @@
             const enf = getEnfantActif();
             if(!enf.repasList) enf.repasList = [];
             enf.repasList.push({ id: 'r_' + Date.now(), nom: 'Nouvelle Ration', prix: 2.00 });
+            majHistoriqueRepas();
             sauvegarderTout();
             renderListeRationsRepas(enf);
             mettreAJourCompteurs();
@@ -1486,6 +1606,7 @@
                 if(prop === 'prix') item[prop] = parseFloat(value) || 0;
                 else item[prop] = value;
             }
+            majHistoriqueRepas();
             sauvegarderTout();
             mettreAJourCompteurs();
         }
@@ -1493,6 +1614,7 @@
         function supprimerLigneRepas(id) {
             const enf = getEnfantActif();
             enf.repasList = enf.repasList.filter(r => r.id !== id);
+            majHistoriqueRepas();
             sauvegarderTout();
             renderListeRationsRepas(enf);
             mettreAJourCompteurs();
@@ -1529,6 +1651,7 @@
             const enf = getEnfantActif();
             if(!enf.kmTrajets) enf.kmTrajets = [];
             enf.kmTrajets.push({ id: 'k_' + Date.now(), nom: 'Nouveau trajet', distanceKm: 2, tauxKm: 0.35 });
+            majHistoriqueKm();
             sauvegarderTout();
             renderListeKmTrajets(enf);
             mettreAJourCompteurs();
@@ -1541,6 +1664,7 @@
                 if(prop === 'distanceKm' || prop === 'tauxKm') item[prop] = parseFloat(value) || 0;
                 else item[prop] = value;
             }
+            majHistoriqueKm();
             sauvegarderTout();
             mettreAJourCompteurs();
         }
@@ -1548,6 +1672,7 @@
         function supprimerLigneKm(id) {
             const enf = getEnfantActif();
             enf.kmTrajets = enf.kmTrajets.filter(k => k.id !== id);
+            majHistoriqueKm();
             sauvegarderTout();
             renderListeKmTrajets(enf);
             mettreAJourCompteurs();
@@ -1726,6 +1851,7 @@
             const enf = getEnfantActif();
             if(!enf.cotisations) enf.cotisations = [];
             enf.cotisations.push({ id: 'c_' + Date.now(), nom: 'Nouvelle charge', baseType: 'net', taux: 1.5 });
+            majHistoriqueCotisations();
             sauvegarderTout();
             renderListeCotisationsSociales(enf);
             mettreAJourCompteurs();
@@ -1738,6 +1864,7 @@
                 if(prop === 'taux') item[prop] = parseFloat(value) || 0;
                 else item[prop] = value;
             }
+            majHistoriqueCotisations();
             sauvegarderTout();
             mettreAJourCompteurs();
         }
@@ -1745,6 +1872,7 @@
         function supprimerLigneCotisation(id) {
             const enf = getEnfantActif();
             enf.cotisations = enf.cotisations.filter(c => c.id !== id);
+            majHistoriqueCotisations();
             sauvegarderTout();
             renderListeCotisationsSociales(enf);
             mettreAJourCompteurs();
@@ -1769,6 +1897,7 @@
                             { titre: "Copier les cotisations ?", okLabel: "Copier", danger: true });
                         if (!ok) return;
                         enfActif.cotisations = JSON.parse(JSON.stringify(autre.cotisations));
+                        majHistoriqueCotisations();
                         sauvegarderTout();
                         renderListeCotisationsSociales(enfActif);
                         mettreAJourCompteurs();
