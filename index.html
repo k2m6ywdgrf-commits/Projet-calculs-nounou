@@ -8,7 +8,16 @@
     <meta name="theme-color" content="#020617">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icon-180.png">
+    <link rel="manifest" href="manifest.json">
     <title>NounouPay Pro v4.1</title>
+    <script>
+        // Enregistrement du service worker (mises à jour fiables en PWA iOS).
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('sw.js').catch(function () {});
+            });
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         body {
