@@ -17,23 +17,6 @@
                 navigator.serviceWorker.register('sw.js').catch(function () {});
             });
         }
-
-        // Hauteur réelle de la fenêtre mesurée en JS : sur iOS (surtout en PWA
-        // sur l'écran d'accueil), 100vh/100dvh ne correspondent pas toujours à
-        // la zone réellement visible → la barre du bas semblait « flotter » en
-        // réservant l'espace d'une barre d'outils Safari inexistante.
-        // window.innerHeight est, lui, toujours exact. On l'expose en variable
-        // CSS --app-height utilisée par la coquille de l'app.
-        (function () {
-            function setAppHeight() {
-                document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
-            }
-            setAppHeight();
-            window.addEventListener('resize', setAppHeight);
-            window.addEventListener('orientationchange', setAppHeight);
-            window.addEventListener('pageshow', setAppHeight);
-            if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
-        })();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
@@ -78,32 +61,49 @@
             color-scheme: dark;
         }
         html, body { overflow-x: hidden; max-width: 100%; }
-        
-        /* Ajustement précis de la zone de l'encoche */
-        header { padding-top: calc(env(safe-area-inset-top) + 1rem); }
-        @media (min-width: 640px) {
-            header { padding-top: 0.5rem; }
+        html { -webkit-text-size-adjust: 100%; }
+
+        /* ── Architecture reprise de l'app sœur (projet-participation) :
+              le <body> défile naturellement et la barre du bas est fixée au
+              viewport. C'est ce modèle qui se comporte correctement en PWA
+              iOS ; l'ancienne carte à hauteur bloquée + scroll interne était
+              la cause des barres « flottantes » et du corps non scrollable. ── */
+        :root { --nav-h: 58px; }
+        body { margin: 0; min-height: 100vh; }
+        @supports (min-height: 100dvh) { body { min-height: 100dvh; } }
+
+        #scroll-area {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 28rem;
+            margin: 0 auto;
+            padding: max(0.75rem, env(safe-area-inset-top)) 1rem
+                     calc(var(--nav-h) + env(safe-area-inset-bottom) + 20px);
         }
-        
+
+        /* Décors flous : fixés en fond d'écran (ne défilent pas). */
+        .bg-orb { position: fixed; z-index: 0; pointer-events: none; }
+
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Barre d'onglets : positionnement défini en CSS pur (pas Tailwind)
-           pour être appliqué dès le 1er affichage et éviter tout saut au
-           lancement (FOUC le temps que Tailwind CDN s'exécute). */
+        /* ── Barre du bas : fixée au bas du viewport (modèle app sœur).
+              Le corps de la page défile derrière ; la barre reste collée. ── */
         .bottom-nav {
-            flex: 0 0 auto;                      /* dernier élément de la colonne, taille fixe */
+            position: fixed;
+            left: 0; right: 0; bottom: 0;
+            margin: 0 auto;
+            max-width: 28rem;
+            z-index: 100;
+            min-height: var(--nav-h);
             display: grid;
             grid-template-columns: 1fr 1fr;
-            margin: 0 -1rem;                     /* pleine largeur : annule le px de .app-shell */
-            padding: 0 0.5rem env(safe-area-inset-bottom);
-            background: rgba(10, 14, 27, 0.85);
+            padding: 6px 8px env(safe-area-inset-bottom);
+            background: rgba(10, 14, 27, 0.92);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
             border-top: 1px solid rgba(255, 255, 255, 0.10);
-        }
-        @media (min-width: 640px) {
-            .bottom-nav { margin: 0 -1.25rem; }
         }
         .bottom-nav > button {
             display: flex;
@@ -112,49 +112,18 @@
             justify-content: center;
             gap: 0.125rem;
             padding: 0.5rem 0;
-        }
-
-        /* Coquille de l'application : layout défini en CSS pur pour être
-           pleinement fonctionnel dès le 1er affichage, sans attendre que
-           Tailwind (chargé en JS via CDN) génère ses classes. Corrige :
-           - le corps qui ne défile pas au lancement (c'est tout le body qui
-             bougeait à la place de la zone de contenu) ;
-           - le décalage / saut de toute l'app quand les styles arrivaient. */
-        html, body { height: 100%; }
-        body { overflow: hidden; }               /* seule .app-scroll défile */
-        .app-shell {
-            width: 100%;
-            max-width: 28rem;
-            margin-left: auto;
-            margin-right: auto;
-            height: var(--app-height, 100dvh);   /* hauteur réelle mesurée en JS */
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-        }
-        .app-scroll {
-            flex: 1 1 auto;
-            min-height: 0;                       /* clé : permet au flex-child de défiler */
-            overflow-y: auto;
-            overflow-x: hidden;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 1rem;
-        }
-        @media (min-width: 640px) {
-            html, body { height: auto; }
-            body { overflow: auto; }
-            .app-shell { height: 880px; }
+            background: none;
+            border: none;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 min-h-dvh text-white font-sans antialiased flex justify-center items-center p-0 sm:p-4 overflow-x-hidden">
+<body class="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white font-sans antialiased overflow-x-hidden">
 
-    <div class="app-shell sm:rounded-[45px] shadow-2xl px-4 sm:px-5 sm:pt-5 bg-slate-900/20 border-0 sm:border border-slate-800/80">
-        
-        <div class="absolute -top-20 -left-20 w-72 h-72 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute top-1/3 -right-20 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute bottom-20 left-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="bg-orb -top-20 -left-20 w-72 h-72 bg-cyan-500/15 rounded-full blur-3xl"></div>
+    <div class="bg-orb top-1/3 -right-20 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl"></div>
+    <div class="bg-orb bottom-40 left-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl"></div>
+
+    <div id="scroll-area">
 
         <header class="relative z-10 mb-3">
             <div class="flex justify-between items-center mb-3">
@@ -179,8 +148,6 @@
             <div id="tabsEnfantsContainer" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
         </header>
 
-        <div class="app-scroll no-scrollbar relative z-10 w-full">
-            
             <div id="tabDashboard" class="space-y-4">
                 
                 <section class="glass-card rounded-2xl p-4">
@@ -546,9 +513,20 @@
                 </div>
             </div>
 
-        </div>
+        </div><!-- /#scroll-area -->
 
-        <div id="modalSelecteurMois" class="hidden absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+        <nav class="bottom-nav">
+            <button onclick="switchTab('dashboard')" id="btnNavDashboard" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-cyan-400">
+                <span class="text-xl leading-none">📊</span>
+                <span class="text-[10px] font-bold tracking-wide">Dashboard</span>
+            </button>
+            <button onclick="switchTab('settings')" id="btnNavSettings" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-slate-500">
+                <span class="text-xl leading-none">⚙️</span>
+                <span class="text-[10px] font-medium tracking-wide">Configuration</span>
+            </button>
+        </nav>
+
+        <div id="modalSelecteurMois" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
             <div class="glass-card rounded-2xl p-5 w-full max-w-xs border border-cyan-500/25 shadow-xl">
                 <p class="text-[11px] text-cyan-500/70 uppercase tracking-widest font-bold mb-3 text-center">Choisir la période</p>
                 <div class="flex gap-2 mb-4">
@@ -562,7 +540,7 @@
             </div>
         </div>
 
-        <div id="modalCloud" onclick="if(event.target===this) fermerModalCloud()" class="hidden absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+        <div id="modalCloud" onclick="if(event.target===this) fermerModalCloud()" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
             <div class="glass-card rounded-2xl p-5 w-full max-w-xs border border-cyan-500/25 shadow-xl">
                 <div class="flex justify-between items-center mb-3">
                     <p class="text-[11px] text-cyan-500/70 uppercase tracking-widest font-bold">État du cloud</p>
@@ -578,18 +556,6 @@
                 </div>
             </div>
         </div>
-
-        <nav class="bottom-nav">
-            <button onclick="switchTab('dashboard')" id="btnNavDashboard" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-cyan-400">
-                <span class="text-xl leading-none">📊</span>
-                <span class="text-[10px] font-bold tracking-wide">Dashboard</span>
-            </button>
-            <button onclick="switchTab('settings')" id="btnNavSettings" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-slate-500">
-                <span class="text-xl leading-none">⚙️</span>
-                <span class="text-[10px] font-medium tracking-wide">Configuration</span>
-            </button>
-        </nav>
-    </div>
 
     <script>
         const moisNoms = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
