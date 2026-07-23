@@ -318,7 +318,6 @@
                     </div>
                     <div class="flex flex-col items-end gap-1.5">
                         <div id="statsScopeToggle" class="flex rounded-xl overflow-hidden glass-card border border-white/10 text-[10px] font-bold"></div>
-                        <div id="statsYearToggle" class="flex flex-wrap justify-end gap-1"></div>
                     </div>
                 </div>
 
@@ -2462,27 +2461,10 @@
             }).join('');
             scopeBox.classList.toggle('hidden', appState.enfants.length < 2);
 
-            const toutes = collecterPayesValidees();
-
-            // Sélecteur d'année (dérivé des données)
-            const annees = Array.from(new Set(toutes.map(p => p.annee))).sort();
-            const yearBox = document.getElementById('statsYearToggle');
-            if (annees.length > 1) {
-                const opts = ['tout'].concat(annees);
-                if (statsAnnee !== 'tout' && !annees.includes(statsAnnee)) statsAnnee = 'tout';
-                yearBox.innerHTML = opts.map(a => {
-                    const on = statsAnnee === a;
-                    const lbl = a === 'tout' ? 'Tout' : a;
-                    return `<button onclick="setStatsAnnee('${a}')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${on ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40' : 'bg-white/5 text-slate-400 border-white/10'}">${lbl}</button>`;
-                }).join('');
-                yearBox.classList.remove('hidden');
-            } else {
-                yearBox.innerHTML = '';
-                yearBox.classList.add('hidden');
-                statsAnnee = 'tout';
-            }
-
-            const payes = statsAnnee === 'tout' ? toutes : toutes.filter(p => p.annee === statsAnnee);
+            // Toutes les payes validées du périmètre (toutes années confondues).
+            const payes = collecterPayesValidees();
+            const annees = Array.from(new Set(payes.map(p => p.annee))).sort();
+            if (statsAnnee !== 'tout' && !annees.includes(statsAnnee)) statsAnnee = 'tout';
 
             const vide = document.getElementById('statsVide');
             const contenu = document.getElementById('statsContenu');
@@ -2547,22 +2529,57 @@
                 ${barChartSVG(serieMois.map(m => ({ label: moisCourtLabel(m.mois), value: m.total })), '#22d3ee')}
             </section>`;
 
-            // Répartition des coûts par catégorie
+            // ===== Carte annuelle : récapitulatif + répartition des coûts =====
+            const parAnnee = {};
+            payes.forEach(p => {
+                if (!parAnnee[p.annee]) parAnnee[p.annee] = { total: 0, acomptes: 0, mois: 0 };
+                parAnnee[p.annee].total += (p.totalGeneral || 0);
+                parAnnee[p.annee].acomptes += (p.acompte || 0);
+                parAnnee[p.annee].mois += 1;
+            });
+            const anneesTri = Object.keys(parAnnee).sort();
+
+            // Sélecteur d'année pour la répartition (années avec payes validées).
+            let chipsAnnee = '';
+            if (annees.length > 1) {
+                chipsAnnee = `<div class="flex flex-wrap gap-1.5 mb-3">` + ['tout'].concat(annees).map(a => {
+                    const on = statsAnnee === a;
+                    const lbl = a === 'tout' ? 'Toutes' : a;
+                    return `<button onclick="setStatsAnnee('${a}')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${on ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40' : 'bg-white/5 text-slate-400 border-white/10'}">${lbl}</button>`;
+                }).join('') + `</div>`;
+            }
+            const payesRepartition = statsAnnee === 'tout' ? payes : payes.filter(p => p.annee === statsAnnee);
             const totauxCat = CATEGORIES_STATS.map(cat => ({
                 nom: cat.nom, couleur: cat.couleur,
-                valeur: payes.reduce((s, p) => s + (p[cat.cle] || 0), 0)
+                valeur: payesRepartition.reduce((s, p) => s + (p[cat.cle] || 0), 0)
             })).filter(c => c.valeur > 0.005);
             const sommeCat = totauxCat.reduce((s, c) => s + c.valeur, 0) || 1;
+            const libelleAnnee = statsAnnee === 'tout' ? 'toutes années' : ('année ' + statsAnnee);
+
             html += `<section class="glass-card rounded-2xl p-4">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">Répartition des coûts</h3>
-                <div class="flex h-3 w-full rounded-full overflow-hidden mb-3">
-                    ${totauxCat.map(c => `<div style="width:${(c.valeur / sommeCat * 100).toFixed(2)}%;background:${c.couleur}" title="${escapeHtml(c.nom)}"></div>`).join('')}
-                </div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">Récapitulatif annuel</h3>
+                <p class="text-[10px] text-slate-500 mb-3">Total réglé par année civile — pratique pour votre déclaration (crédit d'impôt garde d'enfant).</p>
                 <div class="space-y-1.5">
-                    ${totauxCat.map(c => `<div class="flex items-center justify-between text-[11px]">
-                        <span class="flex items-center gap-2 text-slate-300"><span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background:${c.couleur}"></span>${escapeHtml(c.nom)}</span>
-                        <span class="text-slate-400"><span class="text-white font-semibold">${eurosFmt(c.valeur)}</span> · ${(c.valeur / sommeCat * 100).toFixed(1)}%</span>
+                    ${anneesTri.map(a => `<div class="flex items-center justify-between text-[11px] py-1 border-b border-white/5 last:border-0">
+                        <span class="text-slate-300 font-semibold">${a} <span class="text-slate-500 font-normal">· ${parAnnee[a].mois} mois</span></span>
+                        <span class="text-white font-bold">${eurosFmt(parAnnee[a].total)}</span>
                     </div>`).join('')}
+                </div>
+                <div class="mt-4 pt-3 border-t border-white/10">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Répartition des coûts</h4>
+                        <span class="text-[10px] text-slate-500">${libelleAnnee}</span>
+                    </div>
+                    ${chipsAnnee}
+                    <div class="flex h-3 w-full rounded-full overflow-hidden mb-3">
+                        ${totauxCat.map(c => `<div style="width:${(c.valeur / sommeCat * 100).toFixed(2)}%;background:${c.couleur}" title="${escapeHtml(c.nom)}"></div>`).join('')}
+                    </div>
+                    <div class="space-y-1.5">
+                        ${totauxCat.map(c => `<div class="flex items-center justify-between text-[11px]">
+                            <span class="flex items-center gap-2 text-slate-300"><span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background:${c.couleur}"></span>${escapeHtml(c.nom)}</span>
+                            <span class="text-slate-400"><span class="text-white font-semibold">${eurosFmt(c.valeur)}</span> · ${(c.valeur / sommeCat * 100).toFixed(1)}%</span>
+                        </div>`).join('')}
+                    </div>
                 </div>
             </section>`;
 
@@ -2581,37 +2598,34 @@
                 }
             }
 
-            // Récapitulatif annuel (utile pour le crédit d'impôt)
-            const parAnnee = {};
-            payes.forEach(p => {
-                if (!parAnnee[p.annee]) parAnnee[p.annee] = { total: 0, acomptes: 0, mois: 0 };
-                parAnnee[p.annee].total += (p.totalGeneral || 0);
-                parAnnee[p.annee].acomptes += (p.acompte || 0);
-                parAnnee[p.annee].mois += 1;
-            });
-            html += `<section class="glass-card rounded-2xl p-4">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">Récapitulatif annuel</h3>
-                <p class="text-[10px] text-slate-500 mb-3">Total réglé par année civile — pratique pour votre déclaration (crédit d'impôt garde d'enfant).</p>
-                <div class="space-y-1.5">
-                    ${Object.keys(parAnnee).sort().map(a => `<div class="flex items-center justify-between text-[11px] py-1 border-b border-white/5 last:border-0">
-                        <span class="text-slate-300 font-semibold">${a} <span class="text-slate-500 font-normal">· ${parAnnee[a].mois} mois</span></span>
-                        <span class="text-white font-bold">${eurosFmt(parAnnee[a].total)}</span>
-                    </div>`).join('')}
-                </div>
-            </section>`;
-
-            // Liste des mois validés (cliquable → ouvre le mois sur le Dashboard)
+            // Mois validés — accordéon par année, replié par défaut.
+            const parAnneeMois = {};
+            payes.forEach(p => { (parAnneeMois[p.annee] = parAnneeMois[p.annee] || []).push(p); });
+            const anneesMoisTri = Object.keys(parAnneeMois).sort().reverse();
             html += `<section class="glass-card rounded-2xl p-4">
                 <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">Mois validés</h3>
-                <div class="space-y-1.5">
-                    ${payes.slice().reverse().map(p => `<button onclick="ouvrirMoisDepuisStats('${p.enfId}','${p.mois}')" class="w-full flex items-center justify-between gap-2 text-left bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl px-3 py-2 transition active:scale-[0.99]">
-                        <span class="min-w-0">
-                            <span class="text-xs font-bold text-white">${escapeHtml(labelMois(p.mois))}</span>
-                            ${statsScope === 'tous' ? `<span class="text-[10px] text-slate-500"> · ${escapeHtml(p.nomEnfant)}</span>` : ''}
-                            <span class="block text-[10px] text-slate-500">${p.joursGarde || 0} j · ${((p.totalNormalHours || 0) + (p.totalMajoreHours || 0)).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h</span>
-                        </span>
-                        <span class="text-sm font-black text-emerald-300 shrink-0">${eurosFmt(p.totalGeneral)}</span>
-                    </button>`).join('')}
+                <div class="space-y-2">
+                    ${anneesMoisTri.map(a => {
+                        const moisAnnee = parAnneeMois[a].slice().reverse();
+                        const boutonsMois = moisAnnee.map(p => `<button onclick="ouvrirMoisDepuisStats('${p.enfId}','${p.mois}')" class="w-full flex items-center justify-between gap-2 text-left bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl px-3 py-2 transition active:scale-[0.99]">
+                            <span class="min-w-0">
+                                <span class="text-xs font-bold text-white">${escapeHtml(labelMois(p.mois))}</span>
+                                ${statsScope === 'tous' ? `<span class="text-[10px] text-slate-500"> · ${escapeHtml(p.nomEnfant)}</span>` : ''}
+                                <span class="block text-[10px] text-slate-500">${p.joursGarde || 0} j · ${((p.totalNormalHours || 0) + (p.totalMajoreHours || 0)).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h</span>
+                            </span>
+                            <span class="text-sm font-black text-emerald-300 shrink-0">${eurosFmt(p.totalGeneral)}</span>
+                        </button>`).join('');
+                        return `<div>
+                            <button onclick="toggleAnneeMois('${a}')" class="w-full flex items-center justify-between gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 transition active:scale-[0.99]">
+                                <span class="text-sm font-black text-white">${a} <span class="text-[10px] text-slate-500 font-semibold">· ${parAnnee[a].mois} mois</span></span>
+                                <span class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-emerald-300">${eurosFmt(parAnnee[a].total)}</span>
+                                    <span id="chevAnnee-${a}" class="text-slate-500 transition-transform inline-block">▾</span>
+                                </span>
+                            </button>
+                            <div id="moisAnnee-${a}" class="hidden space-y-1.5 mt-1.5 pl-1">${boutonsMois}</div>
+                        </div>`;
+                    }).join('')}
                 </div>
             </section>`;
 
@@ -2721,6 +2735,15 @@
 
         function setStatsScope(s) { statsScope = s; statsAnnee = 'tout'; renderStats(); }
         function setStatsAnnee(a) { statsAnnee = a; renderStats(); }
+
+        // Ouvre / referme la liste des mois d'une année (sans re-render global).
+        function toggleAnneeMois(a) {
+            const c = document.getElementById('moisAnnee-' + a);
+            const chevron = document.getElementById('chevAnnee-' + a);
+            if (!c) return;
+            const nowHidden = c.classList.toggle('hidden');
+            if (chevron) chevron.style.transform = nowHidden ? '' : 'rotate(180deg)';
+        }
 
         function ouvrirMoisDepuisStats(enfId, mois) {
             if (appState.enfants.some(e => e.id === enfId)) {
