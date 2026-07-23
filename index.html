@@ -65,7 +65,7 @@
 </head>
 <body class="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 min-h-dvh text-white font-sans antialiased flex justify-center items-center p-0 sm:p-4 overflow-x-hidden">
 
-    <div class="w-full max-w-md mx-auto sm:rounded-[45px] shadow-2xl overflow-hidden fixed inset-0 sm:relative sm:inset-auto sm:h-[880px] flex flex-col p-4 pt-0 sm:p-5 bg-slate-900/20 border-0 sm:border border-slate-800/80 overflow-x-hidden">
+    <div class="w-full max-w-md mx-auto sm:rounded-[45px] shadow-2xl overflow-hidden relative h-dvh sm:h-[880px] flex flex-col p-4 pt-0 sm:p-5 bg-slate-900/20 border-0 sm:border border-slate-800/80 overflow-x-hidden">
         
         <div class="absolute -top-20 -left-20 w-72 h-72 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute top-1/3 -right-20 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -94,7 +94,7 @@
             <div id="tabsEnfantsContainer" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
         </header>
 
-        <div class="flex-1 overflow-y-auto no-scrollbar relative z-10 w-full overflow-x-hidden pb-4">
+        <div class="flex-1 overflow-y-auto no-scrollbar relative z-10 w-full overflow-x-hidden" style="padding-bottom: calc(76px + env(safe-area-inset-bottom));">
             
             <div id="tabDashboard" class="space-y-4">
                 
@@ -463,7 +463,7 @@
 
         </div>
 
-        <nav class="relative z-10 shrink-0 grid grid-cols-2 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 px-2" style="padding-bottom: env(safe-area-inset-bottom); background: rgba(255, 255, 255, 0.07); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid rgba(255, 255, 255, 0.12);">
+        <nav class="fixed sm:absolute bottom-0 left-0 right-0 z-40 max-w-md mx-auto grid grid-cols-2 px-2" style="padding-bottom: env(safe-area-inset-bottom); background: rgba(10, 14, 27, 0.85); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-top: 1px solid rgba(255, 255, 255, 0.10);">
             <button onclick="switchTab('dashboard')" id="btnNavDashboard" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-cyan-400">
                 <span class="text-xl leading-none">📊</span>
                 <span class="text-[10px] font-bold tracking-wide">Dashboard</span>
