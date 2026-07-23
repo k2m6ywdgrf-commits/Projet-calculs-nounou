@@ -17,6 +17,23 @@
                 navigator.serviceWorker.register('sw.js').catch(function () {});
             });
         }
+
+        // Hauteur réelle de la fenêtre mesurée en JS : sur iOS (surtout en PWA
+        // sur l'écran d'accueil), 100vh/100dvh ne correspondent pas toujours à
+        // la zone réellement visible → la barre du bas semblait « flotter » en
+        // réservant l'espace d'une barre d'outils Safari inexistante.
+        // window.innerHeight est, lui, toujours exact. On l'expose en variable
+        // CSS --app-height utilisée par la coquille de l'app.
+        (function () {
+            function setAppHeight() {
+                document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+            }
+            setAppHeight();
+            window.addEventListener('resize', setAppHeight);
+            window.addEventListener('orientationchange', setAppHeight);
+            window.addEventListener('pageshow', setAppHeight);
+            if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
+        })();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
@@ -75,13 +92,10 @@
            pour être appliqué dès le 1er affichage et éviter tout saut au
            lancement (FOUC le temps que Tailwind CDN s'exécute). */
         .bottom-nav {
-            position: fixed;
-            left: 0; right: 0; bottom: 0;
-            margin-left: auto; margin-right: auto;
-            max-width: 28rem;
-            z-index: 40;
+            flex: 0 0 auto;                      /* dernier élément de la colonne, taille fixe */
             display: grid;
             grid-template-columns: 1fr 1fr;
+            margin: 0 -1rem;                     /* pleine largeur : annule le px de .app-shell */
             padding: 0 0.5rem env(safe-area-inset-bottom);
             background: rgba(10, 14, 27, 0.85);
             backdrop-filter: blur(24px);
@@ -89,7 +103,7 @@
             border-top: 1px solid rgba(255, 255, 255, 0.10);
         }
         @media (min-width: 640px) {
-            .bottom-nav { position: absolute; max-width: none; }
+            .bottom-nav { margin: 0 -1.25rem; }
         }
         .bottom-nav > button {
             display: flex;
@@ -113,7 +127,7 @@
             max-width: 28rem;
             margin-left: auto;
             margin-right: auto;
-            height: 100dvh;
+            height: var(--app-height, 100dvh);   /* hauteur réelle mesurée en JS */
             display: flex;
             flex-direction: column;
             position: relative;
@@ -125,7 +139,7 @@
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: calc(76px + env(safe-area-inset-bottom));
+            padding-bottom: 1rem;
         }
         @media (min-width: 640px) {
             html, body { height: auto; }
@@ -136,7 +150,7 @@
 </head>
 <body class="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 min-h-dvh text-white font-sans antialiased flex justify-center items-center p-0 sm:p-4 overflow-x-hidden">
 
-    <div class="app-shell sm:rounded-[45px] shadow-2xl p-4 pt-0 sm:p-5 bg-slate-900/20 border-0 sm:border border-slate-800/80">
+    <div class="app-shell sm:rounded-[45px] shadow-2xl px-4 sm:px-5 sm:pt-5 bg-slate-900/20 border-0 sm:border border-slate-800/80">
         
         <div class="absolute -top-20 -left-20 w-72 h-72 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute top-1/3 -right-20 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -534,17 +548,6 @@
 
         </div>
 
-        <nav class="bottom-nav">
-            <button onclick="switchTab('dashboard')" id="btnNavDashboard" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-cyan-400">
-                <span class="text-xl leading-none">📊</span>
-                <span class="text-[10px] font-bold tracking-wide">Dashboard</span>
-            </button>
-            <button onclick="switchTab('settings')" id="btnNavSettings" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-slate-500">
-                <span class="text-xl leading-none">⚙️</span>
-                <span class="text-[10px] font-medium tracking-wide">Configuration</span>
-            </button>
-        </nav>
-
         <div id="modalSelecteurMois" class="hidden absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
             <div class="glass-card rounded-2xl p-5 w-full max-w-xs border border-cyan-500/25 shadow-xl">
                 <p class="text-[11px] text-cyan-500/70 uppercase tracking-widest font-bold mb-3 text-center">Choisir la période</p>
@@ -575,6 +578,17 @@
                 </div>
             </div>
         </div>
+
+        <nav class="bottom-nav">
+            <button onclick="switchTab('dashboard')" id="btnNavDashboard" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-cyan-400">
+                <span class="text-xl leading-none">📊</span>
+                <span class="text-[10px] font-bold tracking-wide">Dashboard</span>
+            </button>
+            <button onclick="switchTab('settings')" id="btnNavSettings" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-slate-500">
+                <span class="text-xl leading-none">⚙️</span>
+                <span class="text-[10px] font-medium tracking-wide">Configuration</span>
+            </button>
+        </nav>
     </div>
 
     <script>
