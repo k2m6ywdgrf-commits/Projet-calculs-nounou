@@ -9,7 +9,7 @@
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icon-180.png">
     <link rel="manifest" href="manifest.json">
-    <title>NounouPay Pro v4.1</title>
+    <title>NounouPay Pro v4.2</title>
     <script>
         // Enregistrement du service worker (mises à jour fiables en PWA iOS).
         if ('serviceWorker' in navigator) {
@@ -98,7 +98,7 @@
             z-index: 100;
             min-height: var(--nav-h);
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
             padding: 6px 8px env(safe-area-inset-bottom);
             background: rgba(10, 14, 27, 0.92);
             backdrop-filter: blur(24px);
@@ -114,6 +114,29 @@
             padding: 0.5rem 0;
             background: none;
             border: none;
+        }
+
+        /* ── Filigrane « Paye validée » : superposé, transparent, non cliquable.
+              Tuilé en diagonale via un SVG data-URI pour un vrai effet filigrane. ── */
+        #watermarkValide {
+            position: fixed;
+            inset: 0;
+            z-index: 40;
+            pointer-events: none;
+            display: none;
+            background-repeat: repeat;
+            background-position: center;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='170'><text x='150' y='95' font-family='Arial, sans-serif' font-size='30' font-weight='bold' fill='rgb(52,211,153)' fill-opacity='0.11' text-anchor='middle' transform='rotate(-30 150 85)'>✓ PAYE VALIDÉE</text></svg>");
+        }
+        #watermarkValide.actif { display: block; }
+
+        /* Calendrier verrouillé quand la paye est validée (lecture seule). */
+        #calendrierGrid.verrouille { pointer-events: none; opacity: 0.92; }
+        #calendrierGrid.verrouille [data-jour] { cursor: default; }
+
+        .stat-tile {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
     </style>
 </head>
@@ -254,6 +277,44 @@
                     </div>
                     <div id="mentionLegaleCotisations" class="text-[10px] mt-2 font-bold uppercase tracking-wider py-1 rounded-lg"></div>
                 </div>
+
+                <div id="zoneValidation" class="pt-1">
+                    <button id="btnValiderPaye" onclick="validerPayeMois()" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-90 text-slate-950 text-sm font-black px-4 py-3 rounded-2xl transition shadow-lg shadow-emerald-500/20 active:scale-[0.98]">
+                        ✅ Valider la paye du mois
+                    </button>
+                    <div id="blocPayeValidee" class="hidden glass-card rounded-2xl p-4 border border-emerald-500/30 bg-emerald-950/10">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                            <span class="text-sm font-black text-emerald-300">Paye validée</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mb-3">Les montants sont figés pour ce mois : ils ne changeront plus, même si vous modifiez les paramètres plus tard. Ce mois est comptabilisé dans l'onglet Analyses.</p>
+                        <p id="dateValidationLabel" class="text-[10px] text-slate-500 mb-3"></p>
+                        <button onclick="devaliderPayeMois()" class="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold px-4 py-2.5 rounded-xl transition active:scale-[0.98]">
+                            ✏️ Modifier cette paye
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tabStats" class="space-y-4 hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Payes validées</span>
+                        <h2 class="text-xl font-black tracking-tight">Analyses</h2>
+                    </div>
+                    <div class="flex flex-col items-end gap-1.5">
+                        <div id="statsScopeToggle" class="flex rounded-xl overflow-hidden glass-card border border-white/10 text-[10px] font-bold"></div>
+                        <div id="statsYearToggle" class="flex flex-wrap justify-end gap-1"></div>
+                    </div>
+                </div>
+
+                <div id="statsVide" class="glass-card rounded-2xl p-6 text-center hidden">
+                    <p class="text-3xl mb-2">📊</p>
+                    <p class="text-sm font-bold text-slate-300 mb-1">Aucune paye validée</p>
+                    <p class="text-[11px] text-slate-400">Validez une paye depuis le Dashboard (bouton tout en bas) pour la voir apparaître ici. Seuls les mois validés sont analysés.</p>
+                </div>
+
+                <div id="statsContenu" class="space-y-4"></div>
             </div>
 
             <div id="tabSettings" class="space-y-5 hidden">
@@ -515,10 +576,16 @@
 
         </div><!-- /#scroll-area -->
 
+        <div id="watermarkValide" aria-hidden="true"></div>
+
         <nav class="bottom-nav">
             <button onclick="switchTab('dashboard')" id="btnNavDashboard" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-cyan-400">
                 <span class="text-xl leading-none">📊</span>
                 <span class="text-[10px] font-bold tracking-wide">Dashboard</span>
+            </button>
+            <button onclick="switchTab('stats')" id="btnNavStats" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-slate-500">
+                <span class="text-xl leading-none">📈</span>
+                <span class="text-[10px] font-medium tracking-wide">Analyses</span>
             </button>
             <button onclick="switchTab('settings')" id="btnNavSettings" class="flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-slate-500">
                 <span class="text-xl leading-none">⚙️</span>
@@ -678,7 +745,8 @@
             cotisations: [
                 { id: 'c1', nom: "Cotisations Pajemploi", baseType: "net", taux: 22.5 }
             ],
-            agendaCustom: {}
+            agendaCustom: {},
+            payesValidees: {}
         });
 
         document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
@@ -758,6 +826,19 @@
                 });
             }
             enf.agendaCustom = agenda;
+
+            // Payes validées (instantanés figés par mois). On conserve tel quel
+            // les clés au format YYYY-MM dont la charge utile est un objet.
+            const payes = {};
+            if (enf.payesValidees && typeof enf.payesValidees === 'object') {
+                Object.keys(enf.payesValidees).forEach(mois => {
+                    const snap = enf.payesValidees[mois];
+                    if (/^\d{4}-\d{2}$/.test(mois) && snap && typeof snap === 'object' && snap.validee) {
+                        payes[mois] = snap;
+                    }
+                });
+            }
+            enf.payesValidees = payes;
 
             return enf;
         }
@@ -850,6 +931,7 @@
                 // Profil commun : on complète les cartes mensuelles sans écraser le local.
                 local.acomptesParMois = Object.assign({}, ce.acomptesParMois, local.acomptesParMois);
                 local.agendaCustom = Object.assign({}, ce.agendaCustom, local.agendaCustom);
+                local.payesValidees = Object.assign({}, ce.payesValidees, local.payesValidees);
             });
             return merged;
         };
@@ -1661,6 +1743,8 @@
                 appliquerStyleCase(caseJour);
 
                 caseJour.addEventListener('click', function() {
+                    // Paye validée = calendrier figé : on ignore les clics.
+                    if (estPayeFigee(enf, appState.moisEnCours)) return;
                     if (!enf.agendaCustom) enf.agendaCustom = {};
                     const currentTravaille = this.dataset.travaille === "true";
                     const newTravaille = !currentTravaille;
@@ -1693,65 +1777,68 @@
             el.className = cls;
         }
 
-        function mettreAJourCompteurs() {
-            const enf = getEnfantActif();
-            if(!enf) return;
+        let ongletActif = 'dashboard';
 
-            const toutesCases = document.querySelectorAll('[data-jour]');
-            let joursGardeReels = 0;
-            let joursOuvresTotal = 0;
-            
-            let entretienParLigne = {};
-            if (enf.entretienOn !== false && enf.entretienLignes) {
-                enf.entretienLignes.forEach(ligne => {
-                    entretienParLigne[ligne.id] = { count: 0, heures: ligne.heures || 0 };
+        function labelMois(moisIso) {
+            const p = String(moisIso).split('-');
+            return (moisNoms[parseInt(p[1]) - 1] || '') + " " + p[0];
+        }
+
+        function estPayeFigee(enf, mois) {
+            return !!(enf && enf.payesValidees && enf.payesValidees[mois] && enf.payesValidees[mois].validee);
+        }
+
+        // ============================================================
+        // CALCUL PUR D'UNE PAYE (sans dépendance au DOM) → objet chiffré.
+        // Utilisé pour l'affichage dynamique ET pour figer un instantané
+        // lors de la validation d'une paye.
+        // ============================================================
+        function calculerPaye(enf, moisIso) {
+            const parts = String(moisIso).split('-');
+            const annee = parseInt(parts[0]);
+            const moisIndex = parseInt(parts[1]) - 1;
+            const totalJoursMois = new Date(annee, moisIndex + 1, 0).getDate();
+
+            let joursGarde = 0;
+            let joursOuvres = 0;
+            const entretienParLigne = {};
+            const entretienActif = enf.entretienOn !== false && Array.isArray(enf.entretienLignes);
+            if (entretienActif) {
+                enf.entretienLignes.forEach(l => {
+                    entretienParLigne[l.id] = { count: 0, heures: l.heures || 0, jours: l.jours || [] };
                 });
             }
 
-            toutesCases.forEach(el => {
-                if (el.dataset.nature === "ouvre") {
-                    joursOuvresTotal++;
-                }
-                if (el.dataset.travaille === "true") {
-                    joursGardeReels++;
-                    if (enf.entretienOn !== false && enf.entretienLignes) {
-                        const dWeek = parseInt(el.dataset.dayOfWeek);
-                        for (const ligne of enf.entretienLignes) {
-                            if (ligne.jours && ligne.jours.includes(dWeek)) {
-                                entretienParLigne[ligne.id].count++;
-                                break;
-                            }
+            const joursFeries = joursFeriesAnnee(annee);
+            for (let jour = 1; jour <= totalJoursMois; jour++) {
+                const date = new Date(annee, moisIndex, jour);
+                const dow = date.getDay();
+                const iso = formatDateIso(date);
+                const estWeekend = (dow === 0 || dow === 6);
+                const estFerie = joursFeries.includes(iso);
+                if (!estWeekend && !estFerie) joursOuvres++;
+                if (estJourTravaille(enf, date)) {
+                    joursGarde++;
+                    if (entretienActif) {
+                        for (const l of enf.entretienLignes) {
+                            if (l.jours && l.jours.includes(dow)) { entretienParLigne[l.id].count++; break; }
                         }
                     }
                 }
-            });
-
-            document.getElementById('badgeContainer').innerHTML = `<span class="whitespace-nowrap bg-cyan-500/15 text-cyan-300 px-2.5 py-0.5 rounded-full border border-cyan-500/20">${joursGardeReels} Jrs Présence</span><span class="text-slate-500 font-semibold">/</span><span class="whitespace-nowrap bg-slate-500/15 text-slate-400 px-2.5 py-0.5 rounded-full border border-slate-500/25">${joursOuvresTotal} ouvrés</span>`;
+            }
 
             let totalNormalHours = 0;
             let totalMajoreHours = 0;
+            const mensualise = !!enf.mensualisationOn;
 
-            if (enf.mensualisationOn) {
+            if (mensualise) {
                 totalNormalHours = enf.mensualiseNormal;
                 totalMajoreHours = enf.mensualiseMajore;
-                document.getElementById('infoModeCalcul').innerText = "🔄 CONTRAT MENSUALISÉ : Heures fixes lissées";
-                document.getElementById('infoModeCalcul').className = "text-center py-1 rounded-lg text-[10px] font-bold tracking-wide bg-purple-500/10 text-purple-300 border border-purple-500/20";
             } else {
-                document.getElementById('infoModeCalcul').innerText = "📆 CALCUL AU RÉEL : Heures comptées selon le planning";
-                document.getElementById('infoModeCalcul').className = "text-center py-1 rounded-lg text-[10px] font-bold tracking-wide bg-cyan-500/10 text-cyan-300 border border-cyan-500/20";
-
-                const parts = appState.moisEnCours.split('-');
-                const annee = parseInt(parts[0]);
-                const moisIndex = parseInt(parts[1]) - 1;
                 const finMois = new Date(annee, moisIndex + 1, 0);
-
-                // Le seuil hebdomadaire s'apprécie sur la semaine complète (lundi-dimanche),
-                // y compris les jours appartenant au mois précédent ou suivant. Les heures
-                // au-delà du seuil sont majorées chronologiquement, et chaque jour est
-                // rattaché au mois auquel il appartient.
+                // Le seuil hebdomadaire s'apprécie sur la semaine complète (lundi-dimanche).
                 const curseur = new Date(annee, moisIndex, 1);
                 curseur.setDate(curseur.getDate() - ((curseur.getDay() + 6) % 7));
-
                 while (curseur <= finMois) {
                     let heuresSemaine = 0;
                     for (let d = 0; d < 7; d++) {
@@ -1772,170 +1859,530 @@
             totalNormalHours = Math.round(totalNormalHours * 100) / 100;
             totalMajoreHours = Math.round(totalMajoreHours * 100) / 100;
 
-            document.getElementById('dashQuantiteNormal').innerText = totalNormalHours + " h";
-            document.getElementById('dashValTauxNormal').innerText = enf.tauxNormal.toFixed(2) + " €";
-            document.getElementById('dashQuantiteMajore').innerText = totalMajoreHours + " h";
-            document.getElementById('dashValTauxMajore').innerText = enf.tauxMajore.toFixed(2) + " €";
-            
-            document.getElementById('blockMajore').classList.toggle('hidden', totalMajoreHours <= 0);
+            const montantNormal = totalNormalHours * enf.tauxNormal;
+            const montantMajore = totalMajoreHours * enf.tauxMajore;
 
-            let calculEntretienTotal = 0;
-            let htmlEntretienDetails = '';
-
-            if(enf.entretienOn !== false) {
-                document.getElementById('blockEntretien').classList.remove('hidden');
+            // Entretien
+            const entretienOn = enf.entretienOn !== false;
+            let entretienTotal = 0;
+            const entretienDetails = [];
+            if (entretienOn) {
                 const baseRef = enf.entretienBaseReference !== undefined ? enf.entretienBaseReference : 3.92;
                 const plancher = enf.entretienPlancherMinimal !== undefined ? enf.entretienPlancherMinimal : 2.65;
                 const tauxHoraire = baseRef / 9;
-
-                if (enf.entretienLignes && enf.entretienLignes.length > 0) {
+                if (Array.isArray(enf.entretienLignes)) {
                     enf.entretienLignes.forEach(ligne => {
                         const data = entretienParLigne[ligne.id];
                         if (data && data.count > 0) {
                             const h = data.heures || 0;
                             const tauxJour = h > 0 ? Math.max(plancher, h * tauxHoraire) : 0;
                             const sousTotal = data.count * tauxJour;
-                            calculEntretienTotal += sousTotal;
+                            entretienTotal += sousTotal;
                             const joursLabel = (ligne.jours || [])
                                 .map(j => joursSemaineNoms[j] ? joursSemaineNoms[j].slice(0, 3) : '')
                                 .join('/');
-                            htmlEntretienDetails += `<div class="flex justify-between"><span>• ${joursLabel} (${h}h) : ${data.count} j × ${tauxJour.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotal.toFixed(2)}€</span></div>`;
+                            entretienDetails.push({ joursLabel, heures: h, count: data.count, tauxJour, sousTotal });
                         }
                     });
                 }
-
-                if(htmlEntretienDetails === '') {
-                    htmlEntretienDetails = `<div class="text-[10px] italic text-slate-500 text-center">Aucune présence cochée ce mois-ci</div>`;
-                }
-            } else {
-                document.getElementById('blockEntretien').classList.add('hidden');
             }
-            document.getElementById('detailsEntretienDashboard').innerHTML = htmlEntretienDetails;
 
-            let calculRepasTotal = 0;
-            let htmlRepasDetails = '';
-
-            if(enf.repasOn !== false && enf.repasList && enf.repasList.length > 0) {
-                document.getElementById('blockRepas').classList.remove('hidden');
-                
+            // Repas
+            const repasOn = enf.repasOn !== false && Array.isArray(enf.repasList) && enf.repasList.length > 0;
+            let repasTotal = 0;
+            const repasDetails = [];
+            if (repasOn) {
                 enf.repasList.forEach(ration => {
-                    const sousTotalRation = joursGardeReels * ration.prix;
-                    calculRepasTotal += sousTotalRation;
-                    htmlRepasDetails += `<div class="flex justify-between"><span>• ${escapeHtml(ration.nom)} : ${joursGardeReels} j × ${ration.prix.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotalRation.toFixed(2)}€</span></div>`;
+                    const sousTotal = joursGarde * ration.prix;
+                    repasTotal += sousTotal;
+                    repasDetails.push({ nom: ration.nom, count: joursGarde, prix: ration.prix, sousTotal });
                 });
-            } else {
-                document.getElementById('blockRepas').classList.add('hidden');
             }
-            document.getElementById('detailsRepasDashboard').innerHTML = htmlRepasDetails || `<div class="text-[10px] italic text-slate-500 text-center">Aucun repas actif</div>`;
 
-            let calculKmTotal = 0;
-            let htmlKmDetails = '';
-
-            if(enf.kmOn && enf.kmTrajets && enf.kmTrajets.length > 0) {
-                document.getElementById('blockKm').classList.remove('hidden');
-
+            // Kilomètres
+            const kmOn = !!enf.kmOn && Array.isArray(enf.kmTrajets) && enf.kmTrajets.length > 0;
+            let kmTotal = 0;
+            const kmDetails = [];
+            if (kmOn) {
                 enf.kmTrajets.forEach(trajet => {
-                    const sousTotalTrajet = joursGardeReels * trajet.distanceKm * trajet.tauxKm;
-                    calculKmTotal += sousTotalTrajet;
-                    htmlKmDetails += `<div class="flex justify-between"><span>• ${escapeHtml(trajet.nom)} : ${joursGardeReels} j × ${trajet.distanceKm}km × ${trajet.tauxKm.toFixed(2)}€</span><span class="text-white font-semibold">${sousTotalTrajet.toFixed(2)}€</span></div>`;
+                    const sousTotal = joursGarde * trajet.distanceKm * trajet.tauxKm;
+                    kmTotal += sousTotal;
+                    kmDetails.push({ nom: trajet.nom, count: joursGarde, distanceKm: trajet.distanceKm, tauxKm: trajet.tauxKm, sousTotal });
                 });
-            } else {
-                document.getElementById('blockKm').classList.add('hidden');
             }
-            document.getElementById('detailsKmDashboard').innerHTML = htmlKmDetails;
 
-            const salaireNetBaseCalcul = (totalNormalHours * enf.tauxNormal) + (totalMajoreHours * enf.tauxMajore);
-            const totalHeuresCumulees = totalNormalHours + totalMajoreHours;
-
-            let calculCotisationsTotal = 0;
-            let htmlCotisationsDetails = '';
-
-            if(enf.cotisationsOn && enf.cotisations && enf.cotisations.length > 0) {
-                document.getElementById('blockCotisationsDashboard').classList.remove('hidden');
-                
+            // Cotisations
+            const salaireNetBase = montantNormal + montantMajore;
+            const totalHeures = totalNormalHours + totalMajoreHours;
+            const cotisationsOn = !!enf.cotisationsOn && Array.isArray(enf.cotisations) && enf.cotisations.length > 0;
+            let cotisationsTotal = 0;
+            const cotisationsDetails = [];
+            if (cotisationsOn) {
                 enf.cotisations.forEach(cot => {
-                    let chargeLigne = 0;
-                    if(cot.baseType === 'net') {
-                        chargeLigne = salaireNetBaseCalcul * (cot.taux / 100);
-                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${escapeHtml(cot.nom)} (${cot.taux}% sur Net)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
-                    } else if(cot.baseType === 'heure') {
-                        chargeLigne = totalHeuresCumulees * cot.taux;
-                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${escapeHtml(cot.nom)} (${cot.taux.toFixed(2)}€/h)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
-                    } else if(cot.baseType === 'net_maj') {
-                        const salaireMajoreBase = totalMajoreHours * enf.tauxMajore;
-                        chargeLigne = salaireMajoreBase * (cot.taux / 100);
-                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${escapeHtml(cot.nom)} (${cot.taux}% sur Heures Sup.)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
-                    } else if(cot.baseType === 'heure_maj') {
-                        chargeLigne = totalMajoreHours * cot.taux;
-                        htmlCotisationsDetails += `<div class="flex justify-between"><span>• ${escapeHtml(cot.nom)} (${cot.taux.toFixed(2)}€/h sur Heures Sup.)</span><span class="text-white font-semibold">${chargeLigne.toFixed(2)}€</span></div>`;
-                    }
-                    calculCotisationsTotal += chargeLigne;
+                    let charge = 0, desc = '';
+                    if (cot.baseType === 'net') { charge = salaireNetBase * (cot.taux / 100); desc = `${cot.taux}% sur Net`; }
+                    else if (cot.baseType === 'heure') { charge = totalHeures * cot.taux; desc = `${cot.taux.toFixed(2)}€/h`; }
+                    else if (cot.baseType === 'net_maj') { charge = (totalMajoreHours * enf.tauxMajore) * (cot.taux / 100); desc = `${cot.taux}% sur Heures Sup.`; }
+                    else if (cot.baseType === 'heure_maj') { charge = totalMajoreHours * cot.taux; desc = `${cot.taux.toFixed(2)}€/h sur Heures Sup.`; }
+                    cotisationsTotal += charge;
+                    cotisationsDetails.push({ nom: cot.nom, desc, montant: charge });
                 });
-            } else {
-                document.getElementById('blockCotisationsDashboard').classList.add('hidden');
             }
-            document.getElementById('detailsCotisationsDashboard').innerHTML = htmlCotisationsDetails;
 
-            const totalGeneralFinal = salaireNetBaseCalcul + calculEntretienTotal + calculRepasTotal + calculKmTotal + calculCotisationsTotal;
-            
-            document.getElementById('totalNormal').innerText = (totalNormalHours * enf.tauxNormal).toFixed(2) + " €";
-            document.getElementById('totalMajore').innerText = (totalMajoreHours * enf.tauxMajore).toFixed(2) + " €";
-            document.getElementById('totalEntretien').innerText = calculEntretienTotal.toFixed(2) + " €";
-            document.getElementById('totalRepas').innerText = calculRepasTotal.toFixed(2) + " €";
-            document.getElementById('totalKm').innerText = calculKmTotal.toFixed(2) + " €";
-            document.getElementById('totalCotisations').innerText = calculCotisationsTotal.toFixed(2) + " €";
-            
-            document.getElementById('totalGeneral').innerText = totalGeneralFinal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const totalGeneral = salaireNetBase + entretienTotal + repasTotal + kmTotal + cotisationsTotal;
+            const acomptesOn = !!enf.acomptesOn;
+            const acompte = (enf.acomptesParMois && enf.acomptesParMois[moisIso]) || 0;
+            const resteAPayer = totalGeneral - acompte;
 
-            if(enf.acomptesOn) {
+            return {
+                mois: moisIso, mensualise,
+                joursGarde, joursOuvres,
+                totalNormalHours, totalMajoreHours,
+                tauxNormal: enf.tauxNormal, tauxMajore: enf.tauxMajore,
+                montantNormal, montantMajore,
+                entretienOn, entretienTotal, entretienDetails,
+                repasOn, repasTotal, repasDetails,
+                kmOn, kmTotal, kmDetails,
+                cotisationsOn, cotisationsTotal, cotisationsDetails,
+                totalGeneral,
+                acomptesOn, acompte, resteAPayer
+            };
+        }
+
+        // --- CONSTRUCTION DES LIGNES DE DÉTAIL (identique en dynamique et figé) ---
+        function construireDetailEntretien(details) {
+            if (!details || details.length === 0) {
+                return `<div class="text-[10px] italic text-slate-500 text-center">Aucune présence cochée ce mois-ci</div>`;
+            }
+            return details.map(d => `<div class="flex justify-between"><span>• ${escapeHtml(d.joursLabel)} (${d.heures}h) : ${d.count} j × ${d.tauxJour.toFixed(2)}€</span><span class="text-white font-semibold">${d.sousTotal.toFixed(2)}€</span></div>`).join('');
+        }
+
+        function renderPaye(R, fige) {
+            const info = document.getElementById('infoModeCalcul');
+            if (R.mensualise) {
+                info.innerText = "🔄 CONTRAT MENSUALISÉ : Heures fixes lissées";
+                info.className = "text-center py-1 rounded-lg text-[10px] font-bold tracking-wide bg-purple-500/10 text-purple-300 border border-purple-500/20";
+            } else {
+                info.innerText = "📆 CALCUL AU RÉEL : Heures comptées selon le planning";
+                info.className = "text-center py-1 rounded-lg text-[10px] font-bold tracking-wide bg-cyan-500/10 text-cyan-300 border border-cyan-500/20";
+            }
+
+            document.getElementById('badgeContainer').innerHTML = `<span class="whitespace-nowrap bg-cyan-500/15 text-cyan-300 px-2.5 py-0.5 rounded-full border border-cyan-500/20">${R.joursGarde} Jrs Présence</span><span class="text-slate-500 font-semibold">/</span><span class="whitespace-nowrap bg-slate-500/15 text-slate-400 px-2.5 py-0.5 rounded-full border border-slate-500/25">${R.joursOuvres} ouvrés</span>`;
+
+            document.getElementById('dashQuantiteNormal').innerText = R.totalNormalHours + " h";
+            document.getElementById('dashValTauxNormal').innerText = R.tauxNormal.toFixed(2) + " €";
+            document.getElementById('dashQuantiteMajore').innerText = R.totalMajoreHours + " h";
+            document.getElementById('dashValTauxMajore').innerText = R.tauxMajore.toFixed(2) + " €";
+            document.getElementById('blockMajore').classList.toggle('hidden', R.totalMajoreHours <= 0);
+
+            document.getElementById('blockEntretien').classList.toggle('hidden', !R.entretienOn);
+            document.getElementById('detailsEntretienDashboard').innerHTML = R.entretienOn ? construireDetailEntretien(R.entretienDetails) : '';
+
+            document.getElementById('blockRepas').classList.toggle('hidden', !R.repasOn);
+            document.getElementById('detailsRepasDashboard').innerHTML = (R.repasDetails || []).map(d => `<div class="flex justify-between"><span>• ${escapeHtml(d.nom)} : ${d.count} j × ${d.prix.toFixed(2)}€</span><span class="text-white font-semibold">${d.sousTotal.toFixed(2)}€</span></div>`).join('') || `<div class="text-[10px] italic text-slate-500 text-center">Aucun repas actif</div>`;
+
+            document.getElementById('blockKm').classList.toggle('hidden', !R.kmOn);
+            document.getElementById('detailsKmDashboard').innerHTML = (R.kmDetails || []).map(d => `<div class="flex justify-between"><span>• ${escapeHtml(d.nom)} : ${d.count} j × ${d.distanceKm}km × ${d.tauxKm.toFixed(2)}€</span><span class="text-white font-semibold">${d.sousTotal.toFixed(2)}€</span></div>`).join('');
+
+            document.getElementById('blockCotisationsDashboard').classList.toggle('hidden', !R.cotisationsOn);
+            document.getElementById('detailsCotisationsDashboard').innerHTML = (R.cotisationsDetails || []).map(d => `<div class="flex justify-between"><span>• ${escapeHtml(d.nom)} (${d.desc})</span><span class="text-white font-semibold">${d.montant.toFixed(2)}€</span></div>`).join('');
+
+            document.getElementById('totalNormal').innerText = R.montantNormal.toFixed(2) + " €";
+            document.getElementById('totalMajore').innerText = R.montantMajore.toFixed(2) + " €";
+            document.getElementById('totalEntretien').innerText = R.entretienTotal.toFixed(2) + " €";
+            document.getElementById('totalRepas').innerText = R.repasTotal.toFixed(2) + " €";
+            document.getElementById('totalKm').innerText = R.kmTotal.toFixed(2) + " €";
+            document.getElementById('totalCotisations').innerText = R.cotisationsTotal.toFixed(2) + " €";
+            document.getElementById('totalGeneral').innerText = R.totalGeneral.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            const inputAc = document.getElementById('inputAcompteMois');
+            if (R.acomptesOn) {
                 document.getElementById('blockAcomptes').classList.remove('hidden');
-                const acompteDuMois = (enf.acomptesParMois && enf.acomptesParMois[appState.moisEnCours]) || 0;
-                const resteAPayer = totalGeneralFinal - acompteDuMois;
-                if(acompteDuMois > 0) {
+                if (inputAc) {
+                    inputAc.disabled = !!fige;
+                    // En figé on affiche la valeur gelée ; en dynamique on ne touche
+                    // pas au champ pour ne pas perturber la saisie en cours.
+                    if (fige) inputAc.value = R.acompte > 0 ? R.acompte : '';
+                }
+                if (R.acompte > 0) {
                     document.getElementById('ligneResteAPayer').classList.remove('hidden');
-                    document.getElementById('valAcompteDeduit').innerText = acompteDuMois.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
-                    document.getElementById('valResteAPayer').innerText = resteAPayer.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+                    document.getElementById('valAcompteDeduit').innerText = R.acompte.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+                    document.getElementById('valResteAPayer').innerText = R.resteAPayer.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
                 } else {
                     document.getElementById('ligneResteAPayer').classList.add('hidden');
                 }
             } else {
                 document.getElementById('blockAcomptes').classList.add('hidden');
                 document.getElementById('ligneResteAPayer').classList.add('hidden');
+                if (inputAc) inputAc.disabled = false;
             }
 
             const mentionDiv = document.getElementById('mentionLegaleCotisations');
-            if(enf.cotisationsOn) {
+            if (R.cotisationsOn) {
                 mentionDiv.innerText = "✅ Cotisations sociales incluses (Détail ci-dessus)";
                 mentionDiv.className = "text-[10px] mt-2 font-bold uppercase tracking-wider py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-center";
             } else {
                 mentionDiv.innerText = "⚠️ Attention : Sommes nettes hors cotisations sociales";
                 mentionDiv.className = "text-[10px] mt-2 font-bold uppercase tracking-wider py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-center";
             }
+
+            // Zone de validation + verrouillage visuel
+            const btnVal = document.getElementById('btnValiderPaye');
+            const blocVal = document.getElementById('blocPayeValidee');
+            const grid = document.getElementById('calendrierGrid');
+            if (fige) {
+                btnVal.classList.add('hidden');
+                blocVal.classList.remove('hidden');
+                const quand = R.dateValidation ? formatDateHeureFr(R.dateValidation) : '';
+                document.getElementById('dateValidationLabel').innerText = quand ? ('Validée le ' + quand) : '';
+                if (grid) grid.classList.add('verrouille');
+            } else {
+                btnVal.classList.remove('hidden');
+                blocVal.classList.add('hidden');
+                if (grid) grid.classList.remove('verrouille');
+            }
+            majWatermark();
+        }
+
+        function majWatermark() {
+            const wm = document.getElementById('watermarkValide');
+            if (!wm) return;
+            const enf = getEnfantActif();
+            const fige = enf && estPayeFigee(enf, appState.moisEnCours);
+            wm.classList.toggle('actif', !!(fige && ongletActif === 'dashboard'));
+        }
+
+        function mettreAJourCompteurs() {
+            const enf = getEnfantActif();
+            if (!enf) return;
+            const mois = appState.moisEnCours;
+            const snap = enf.payesValidees && enf.payesValidees[mois];
+            const fige = !!(snap && snap.validee);
+            const R = fige ? snap : calculerPaye(enf, mois);
+            renderPaye(R, fige);
+        }
+
+        // --- VALIDATION / DÉVALIDATION D'UNE PAYE ---
+        function validerPayeMois() {
+            const enf = getEnfantActif();
+            if (!enf) return;
+            const mois = appState.moisEnCours;
+            if (!confirm("Valider la paye de " + labelMois(mois) + " ?\n\nLes montants seront figés : ils ne changeront plus, même si vous modifiez les paramètres plus tard. Vous pourrez toujours la modifier ensuite.")) return;
+
+            const R = calculerPaye(enf, mois);
+            R.validee = true;
+            R.dateValidation = new Date().toISOString();
+            R.nomEnfant = enf.nomEnfant || '';
+            R.nomNounou = enf.nomNounou || '';
+            R.v = 1;
+            if (!enf.payesValidees) enf.payesValidees = {};
+            enf.payesValidees[mois] = R;
+
+            sauvegarderTout();
+            mettreAJourCompteurs();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function devaliderPayeMois() {
+            const enf = getEnfantActif();
+            if (!enf) return;
+            const mois = appState.moisEnCours;
+            if (!confirm("Modifier la paye validée de " + labelMois(mois) + " ?\n\nLes montants redeviennent dynamiques et suivront de nouveau vos paramètres et votre planning. Pensez à re-valider une fois vos corrections faites.")) return;
+
+            if (enf.payesValidees) delete enf.payesValidees[mois];
+            sauvegarderTout();
+            mettreAJourCompteurs();
         }
 
         function switchTab(tabId) {
+            ongletActif = tabId;
             const dash = document.getElementById('tabDashboard');
+            const stats = document.getElementById('tabStats');
             const sett = document.getElementById('tabSettings');
             const btnDash = document.getElementById('btnNavDashboard');
+            const btnStats = document.getElementById('btnNavStats');
             const btnSett = document.getElementById('btnNavSettings');
 
+            const inactif = "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-slate-500";
+            const labelInactif = "text-[10px] font-medium tracking-wide";
+
+            dash.classList.toggle('hidden', tabId !== 'dashboard');
+            stats.classList.toggle('hidden', tabId !== 'stats');
+            sett.classList.toggle('hidden', tabId !== 'settings');
+
+            btnDash.className = tabId === 'dashboard' ? "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-cyan-400" : inactif;
+            btnDash.querySelector('span:last-child').className = tabId === 'dashboard' ? "text-[10px] font-bold tracking-wide" : labelInactif;
+            btnStats.className = tabId === 'stats' ? "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-emerald-400" : inactif;
+            btnStats.querySelector('span:last-child').className = tabId === 'stats' ? "text-[10px] font-bold tracking-wide" : labelInactif;
+            btnSett.className = tabId === 'settings' ? "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-purple-400" : inactif;
+            btnSett.querySelector('span:last-child').className = tabId === 'settings' ? "text-[10px] font-bold tracking-wide" : labelInactif;
+
             if (tabId === 'dashboard') {
-                dash.classList.remove('hidden');
-                sett.classList.add('hidden');
-                btnDash.className = "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-cyan-400";
-                btnDash.querySelector('span:last-child').className = "text-[10px] font-bold tracking-wide";
-                btnSett.className = "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-slate-500";
-                btnSett.querySelector('span:last-child').className = "text-[10px] font-medium tracking-wide";
                 mettreAJourCompteurs();
+            } else if (tabId === 'stats') {
+                renderStats();
             } else {
-                dash.classList.add('hidden');
-                sett.classList.remove('hidden');
-                btnDash.className = "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-slate-500";
-                btnDash.querySelector('span:last-child').className = "text-[10px] font-medium tracking-wide";
-                btnSett.className = "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors text-purple-400";
-                btnSett.querySelector('span:last-child').className = "text-[10px] font-bold tracking-wide";
                 renderImportCotisationsOutil(getEnfantActif());
             }
+            majWatermark();
+        }
+
+        // ============================================================
+        // ONGLET ANALYSES — n'agrège QUE les payes validées (figées).
+        // ============================================================
+        const CATEGORIES_STATS = [
+            { cle: 'montantNormal', nom: 'Heures normales', couleur: '#22d3ee' },
+            { cle: 'montantMajore', nom: 'Heures majorées', couleur: '#a78bfa' },
+            { cle: 'entretienTotal', nom: 'Entretien', couleur: '#34d399' },
+            { cle: 'repasTotal', nom: 'Repas', couleur: '#fbbf24' },
+            { cle: 'kmTotal', nom: 'Kilomètres', couleur: '#38bdf8' },
+            { cle: 'cotisationsTotal', nom: 'Cotisations', couleur: '#f87171' }
+        ];
+
+        let statsScope = 'actif'; // 'actif' | 'tous'
+        let statsAnnee = 'tout';  // 'tout' | 'YYYY'
+
+        function eurosCourt(v) {
+            const n = Math.round(v);
+            if (Math.abs(n) >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1).replace('.', ',') + 'k';
+            return String(n);
+        }
+        function eurosFmt(v) {
+            return (v || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+        }
+
+        // Rassemble toutes les payes validées selon le périmètre choisi.
+        function collecterPayesValidees() {
+            const liste = [];
+            const enfants = statsScope === 'actif'
+                ? appState.enfants.filter(e => e.id === appState.activeEnfantId)
+                : appState.enfants;
+            enfants.forEach(enf => {
+                if (!enf.payesValidees) return;
+                Object.keys(enf.payesValidees).forEach(mois => {
+                    const snap = enf.payesValidees[mois];
+                    if (!snap || !snap.validee) return;
+                    liste.push(Object.assign({}, snap, {
+                        mois: mois,
+                        annee: mois.split('-')[0],
+                        enfId: enf.id,
+                        nomEnfant: enf.nomEnfant || snap.nomEnfant || 'Enfant'
+                    }));
+                });
+            });
+            liste.sort((a, b) => a.mois < b.mois ? -1 : (a.mois > b.mois ? 1 : 0));
+            return liste;
+        }
+
+        function renderStats() {
+            const enfActif = getEnfantActif();
+            // Barre de périmètre (enfant actif / tous les enfants)
+            const scopeBox = document.getElementById('statsScopeToggle');
+            const optScope = [
+                { cle: 'actif', label: enfActif ? (enfActif.nomEnfant || 'Enfant') : 'Actif' },
+                { cle: 'tous', label: 'Tous' }
+            ];
+            scopeBox.innerHTML = optScope.map(o => {
+                const on = statsScope === o.cle;
+                return `<button onclick="setStatsScope('${o.cle}')" class="px-3 py-1 ${on ? 'bg-emerald-500/25 text-emerald-200' : 'text-slate-400'} transition">${escapeHtml(o.label)}</button>`;
+            }).join('');
+            scopeBox.classList.toggle('hidden', appState.enfants.length < 2);
+
+            const toutes = collecterPayesValidees();
+
+            // Sélecteur d'année (dérivé des données)
+            const annees = Array.from(new Set(toutes.map(p => p.annee))).sort();
+            const yearBox = document.getElementById('statsYearToggle');
+            if (annees.length > 1) {
+                const opts = ['tout'].concat(annees);
+                if (statsAnnee !== 'tout' && !annees.includes(statsAnnee)) statsAnnee = 'tout';
+                yearBox.innerHTML = opts.map(a => {
+                    const on = statsAnnee === a;
+                    const lbl = a === 'tout' ? 'Tout' : a;
+                    return `<button onclick="setStatsAnnee('${a}')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${on ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40' : 'bg-white/5 text-slate-400 border-white/10'}">${lbl}</button>`;
+                }).join('');
+                yearBox.classList.remove('hidden');
+            } else {
+                yearBox.innerHTML = '';
+                yearBox.classList.add('hidden');
+                statsAnnee = 'tout';
+            }
+
+            const payes = statsAnnee === 'tout' ? toutes : toutes.filter(p => p.annee === statsAnnee);
+
+            const vide = document.getElementById('statsVide');
+            const contenu = document.getElementById('statsContenu');
+            if (payes.length === 0) {
+                vide.classList.remove('hidden');
+                contenu.innerHTML = '';
+                return;
+            }
+            vide.classList.add('hidden');
+
+            // --- Agrégats ---
+            const totalVerse = payes.reduce((s, p) => s + (p.totalGeneral || 0), 0);
+            const totalHeures = payes.reduce((s, p) => s + (p.totalNormalHours || 0) + (p.totalMajoreHours || 0), 0);
+            const totalJours = payes.reduce((s, p) => s + (p.joursGarde || 0), 0);
+            const totalAcomptes = payes.reduce((s, p) => s + (p.acompte || 0), 0);
+            const nbMois = payes.length;
+            const moyenne = nbMois ? totalVerse / nbMois : 0;
+            const coutJour = totalJours ? totalVerse / totalJours : 0;
+
+            let html = '';
+
+            // KPI tiles
+            html += `<div class="grid grid-cols-2 gap-2.5">
+                ${tileHTML('Total versé', eurosFmt(totalVerse), 'emerald')}
+                ${tileHTML('Mois validés', String(nbMois), 'cyan')}
+                ${tileHTML('Moyenne / mois', eurosFmt(moyenne), 'indigo')}
+                ${tileHTML('Total heures', totalHeures.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' h', 'purple')}
+            </div>`;
+
+            // Évolution mensuelle (barres)
+            const parMois = statsAnnee === 'tout'
+                ? agregerParMois(payes)          // cumul multi-enfants par mois
+                : agregerParMois(payes);
+            html += `<section class="glass-card rounded-2xl p-4">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">Évolution mensuelle</h3>
+                ${barChartSVG(parMois.map(m => ({ label: moisCourtLabel(m.mois), value: m.total })), '#22d3ee')}
+            </section>`;
+
+            // Répartition des coûts par catégorie
+            const totauxCat = CATEGORIES_STATS.map(cat => ({
+                nom: cat.nom, couleur: cat.couleur,
+                valeur: payes.reduce((s, p) => s + (p[cat.cle] || 0), 0)
+            })).filter(c => c.valeur > 0.005);
+            const sommeCat = totauxCat.reduce((s, c) => s + c.valeur, 0) || 1;
+            html += `<section class="glass-card rounded-2xl p-4">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">Répartition des coûts</h3>
+                <div class="flex h-3 w-full rounded-full overflow-hidden mb-3">
+                    ${totauxCat.map(c => `<div style="width:${(c.valeur / sommeCat * 100).toFixed(2)}%;background:${c.couleur}" title="${escapeHtml(c.nom)}"></div>`).join('')}
+                </div>
+                <div class="space-y-1.5">
+                    ${totauxCat.map(c => `<div class="flex items-center justify-between text-[11px]">
+                        <span class="flex items-center gap-2 text-slate-300"><span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background:${c.couleur}"></span>${escapeHtml(c.nom)}</span>
+                        <span class="text-slate-400"><span class="text-white font-semibold">${eurosFmt(c.valeur)}</span> · ${(c.valeur / sommeCat * 100).toFixed(1)}%</span>
+                    </div>`).join('')}
+                </div>
+            </section>`;
+
+            // Comparaison entre enfants (uniquement en périmètre « Tous »)
+            if (statsScope === 'tous' && appState.enfants.length > 1) {
+                const parEnfant = {};
+                payes.forEach(p => { parEnfant[p.enfId] = (parEnfant[p.enfId] || 0) + (p.totalGeneral || 0); });
+                const dataEnf = appState.enfants
+                    .filter(e => parEnfant[e.id])
+                    .map(e => ({ label: e.nomEnfant || 'Enfant', value: parEnfant[e.id] }));
+                if (dataEnf.length > 0) {
+                    html += `<section class="glass-card rounded-2xl p-4">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">Comparaison par enfant</h3>
+                        ${barChartSVG(dataEnf, '#a78bfa')}
+                    </section>`;
+                }
+            }
+
+            // Récapitulatif annuel (utile pour le crédit d'impôt)
+            const parAnnee = {};
+            payes.forEach(p => {
+                if (!parAnnee[p.annee]) parAnnee[p.annee] = { total: 0, acomptes: 0, mois: 0 };
+                parAnnee[p.annee].total += (p.totalGeneral || 0);
+                parAnnee[p.annee].acomptes += (p.acompte || 0);
+                parAnnee[p.annee].mois += 1;
+            });
+            html += `<section class="glass-card rounded-2xl p-4">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">Récapitulatif annuel</h3>
+                <p class="text-[10px] text-slate-500 mb-3">Total réglé par année civile — pratique pour votre déclaration (crédit d'impôt garde d'enfant).</p>
+                <div class="space-y-1.5">
+                    ${Object.keys(parAnnee).sort().map(a => `<div class="flex items-center justify-between text-[11px] py-1 border-b border-white/5 last:border-0">
+                        <span class="text-slate-300 font-semibold">${a} <span class="text-slate-500 font-normal">· ${parAnnee[a].mois} mois</span></span>
+                        <span class="text-white font-bold">${eurosFmt(parAnnee[a].total)}</span>
+                    </div>`).join('')}
+                </div>
+            </section>`;
+
+            // Liste des mois validés (cliquable → ouvre le mois sur le Dashboard)
+            html += `<section class="glass-card rounded-2xl p-4">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">Mois validés</h3>
+                <div class="space-y-1.5">
+                    ${payes.slice().reverse().map(p => `<button onclick="ouvrirMoisDepuisStats('${p.enfId}','${p.mois}')" class="w-full flex items-center justify-between gap-2 text-left bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl px-3 py-2 transition active:scale-[0.99]">
+                        <span class="min-w-0">
+                            <span class="text-xs font-bold text-white">${escapeHtml(labelMois(p.mois))}</span>
+                            ${statsScope === 'tous' ? `<span class="text-[10px] text-slate-500"> · ${escapeHtml(p.nomEnfant)}</span>` : ''}
+                            <span class="block text-[10px] text-slate-500">${p.joursGarde || 0} j · ${((p.totalNormalHours || 0) + (p.totalMajoreHours || 0)).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h</span>
+                        </span>
+                        <span class="text-sm font-black text-emerald-300 shrink-0">${eurosFmt(p.totalGeneral)}</span>
+                    </button>`).join('')}
+                </div>
+            </section>`;
+
+            contenu.innerHTML = html;
+        }
+
+        function tileHTML(label, valeur, teinte) {
+            const map = {
+                emerald: 'text-emerald-300', cyan: 'text-cyan-300',
+                indigo: 'text-indigo-300', purple: 'text-purple-300'
+            };
+            return `<div class="stat-tile rounded-2xl p-3.5">
+                <p class="text-[9px] uppercase tracking-widest text-slate-500 font-bold mb-1">${escapeHtml(label)}</p>
+                <p class="text-lg font-black ${map[teinte] || 'text-white'} leading-tight break-words">${escapeHtml(valeur)}</p>
+            </div>`;
+        }
+
+        // Agrège les payes par mois (somme des enfants pour un même mois).
+        function agregerParMois(payes) {
+            const parMois = {};
+            payes.forEach(p => { parMois[p.mois] = (parMois[p.mois] || 0) + (p.totalGeneral || 0); });
+            return Object.keys(parMois).sort().map(m => ({ mois: m, total: parMois[m] }));
+        }
+
+        function moisCourtLabel(moisIso) {
+            const p = String(moisIso).split('-');
+            const nom = (moisNoms[parseInt(p[1]) - 1] || '').slice(0, 3);
+            return nom + '\n' + String(p[0]).slice(2);
+        }
+
+        // Graphique à barres verticales en SVG (responsive, sans dépendance).
+        function barChartSVG(data, couleur) {
+            if (!data || data.length === 0) return '<p class="text-[11px] text-slate-500 text-center py-4">Aucune donnée</p>';
+            const W = Math.max(data.length * 46, 300);
+            const H = 180;
+            const padTop = 22, padBottom = 34, padX = 6;
+            const maxVal = Math.max.apply(null, data.map(d => d.value)) || 1;
+            const zoneH = H - padTop - padBottom;
+            const bw = (W - padX * 2) / data.length;
+            const barW = Math.min(bw * 0.62, 40);
+
+            let bars = '';
+            data.forEach((d, i) => {
+                const h = maxVal > 0 ? (d.value / maxVal) * zoneH : 0;
+                const x = padX + i * bw + (bw - barW) / 2;
+                const y = padTop + (zoneH - h);
+                bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(h, 1).toFixed(1)}" rx="4" fill="${couleur}" opacity="0.85"></rect>`;
+                bars += `<text x="${(x + barW / 2).toFixed(1)}" y="${(y - 5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#e2e8f0">${eurosCourt(d.value)}</text>`;
+                const lignes = String(d.label).split('\n');
+                lignes.forEach((lg, li) => {
+                    bars += `<text x="${(x + barW / 2).toFixed(1)}" y="${(H - padBottom + 14 + li * 10).toFixed(1)}" text-anchor="middle" font-size="9" fill="#94a3b8">${escapeHtml(lg)}</text>`;
+                });
+            });
+            const baseY = padTop + zoneH;
+            return `<div class="overflow-x-auto no-scrollbar"><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="xMidYMid meet" style="min-width:${W}px" role="img">
+                <line x1="${padX}" y1="${baseY}" x2="${W - padX}" y2="${baseY}" stroke="rgba(255,255,255,0.12)" stroke-width="1"></line>
+                ${bars}
+            </svg></div>`;
+        }
+
+        function setStatsScope(s) { statsScope = s; statsAnnee = 'tout'; renderStats(); }
+        function setStatsAnnee(a) { statsAnnee = a; renderStats(); }
+
+        function ouvrirMoisDepuisStats(enfId, mois) {
+            if (appState.enfants.some(e => e.id === enfId)) {
+                appState.activeEnfantId = enfId;
+                renderTabsEnfants();
+                chargerProfilEnEcran(enfId);
+            }
+            changerMoisGlobal(mois);
+            switchTab('dashboard');
         }
 
         initApp();

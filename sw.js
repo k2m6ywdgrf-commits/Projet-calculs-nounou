@@ -2,7 +2,7 @@
 // récupère la dernière version dès qu'une connexion est disponible tout en
 // restant lançable hors-ligne. Indispensable en app sur l'écran d'accueil
 // iPhone : sans lui, iOS peut resservir indéfiniment une version en cache.
-var CACHE = 'nounoupay-v2';
+var CACHE = 'nounoupay-v3';
 var ASSETS = ['./', 'index.html', 'manifest.json', 'icon.svg', 'icon-180.png'];
 
 self.addEventListener('install', function(e) {
