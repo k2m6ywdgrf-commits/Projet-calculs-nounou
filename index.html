@@ -1182,7 +1182,7 @@
                 document.body.removeChild(lien);
                 URL.revokeObjectURL(url);
             } catch(e) {
-                alert("Erreur lors de l'export des données.");
+                alerterModal("Une erreur est survenue lors de l'export des données.", { titre: "Export impossible", danger: true });
             }
         }
 
@@ -1195,24 +1195,27 @@
             if (!fichier) return;
 
             const lecteur = new FileReader();
-            lecteur.onload = function(e) {
+            lecteur.onload = async function(e) {
                 try {
                     const donneesImportees = JSON.parse(e.target.result);
 
                     if (!donneesImportees || !Array.isArray(donneesImportees.enfants) || donneesImportees.enfants.length === 0) {
-                        alert("Fichier invalide : ce n'est pas une sauvegarde NounouPay reconnue.");
+                        alerterModal("Ce fichier n'est pas une sauvegarde NounouPay reconnue.", { titre: "Fichier invalide", danger: true });
                         return;
                     }
 
-                    if (confirm("Importer cette sauvegarde va remplacer toutes les données actuelles. Continuer ?")) {
+                    const ok = await confirmerModal(
+                        "Importer cette sauvegarde remplacera toutes les données actuelles. Cette action est irréversible.",
+                        { titre: "Importer cette sauvegarde ?", okLabel: "Importer", danger: true });
+                    if (ok) {
                         appState = normaliserEtat(donneesImportees);
                         sauvegarderTout();
                         renderTabsEnfants();
                         chargerProfilEnEcran(appState.activeEnfantId);
-                        alert("Sauvegarde importée avec succès.");
+                        alerterModal("La sauvegarde a été importée avec succès.", { titre: "Import réussi" });
                     }
                 } catch(err) {
-                    alert("Impossible de lire ce fichier : format JSON invalide.");
+                    alerterModal("Impossible de lire ce fichier : format JSON invalide.", { titre: "Lecture impossible", danger: true });
                 } finally {
                     event.target.value = '';
                 }
@@ -1251,18 +1254,22 @@
             switchTab('settings');
         }
 
-        function supprimerEnfantActif() {
+        async function supprimerEnfantActif() {
             if (appState.enfants.length <= 1) {
-                alert("Vous devez conserver au moins un profil d'enfant.");
+                alerterModal("Vous devez conserver au moins un profil d'enfant.", { titre: "Action impossible" });
                 return;
             }
-            if(confirm("Supprimer ce profil enfant ?")) {
-                appState.enfants = appState.enfants.filter(e => e.id !== appState.activeEnfantId);
-                appState.activeEnfantId = appState.enfants[0].id;
-                sauvegarderTout();
-                renderTabsEnfants();
-                chargerProfilEnEcran(appState.activeEnfantId);
-            }
+            const enf = getEnfantActif();
+            const nom = (enf && enf.nomEnfant) ? enf.nomEnfant : "ce profil";
+            const ok = await confirmerModal(
+                `Le profil « ${nom} » et toutes ses données (planning, payes validées…) seront supprimés définitivement.`,
+                { titre: "Supprimer ce profil enfant ?", okLabel: "Supprimer", danger: true });
+            if (!ok) return;
+            appState.enfants = appState.enfants.filter(e => e.id !== appState.activeEnfantId);
+            appState.activeEnfantId = appState.enfants[0].id;
+            sauvegarderTout();
+            renderTabsEnfants();
+            chargerProfilEnEcran(appState.activeEnfantId);
         }
 
         function getEnfantActif() {
@@ -1757,13 +1764,15 @@
                     const btn = document.createElement('button');
                     btn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 text-[10px] font-bold px-2.5 py-1 rounded-lg transition active:scale-95";
                     btn.innerText = `Importer de "${autre.nomEnfant}"`;
-                    btn.onclick = () => {
-                        if(confirm(`Écraser les cotisations de ${enfActif.nomEnfant} pour cloner celles de ${autre.nomEnfant} ?`)) {
-                            enfActif.cotisations = JSON.parse(JSON.stringify(autre.cotisations));
-                            sauvegarderTout();
-                            renderListeCotisationsSociales(enfActif);
-                            mettreAJourCompteurs();
-                        }
+                    btn.onclick = async () => {
+                        const ok = await confirmerModal(
+                            `Les cotisations de « ${enfActif.nomEnfant} » seront remplacées par celles de « ${autre.nomEnfant} ».`,
+                            { titre: "Copier les cotisations ?", okLabel: "Copier", danger: true });
+                        if (!ok) return;
+                        enfActif.cotisations = JSON.parse(JSON.stringify(autre.cotisations));
+                        sauvegarderTout();
+                        renderListeCotisationsSociales(enfActif);
+                        mettreAJourCompteurs();
                     };
                     containerBtn.appendChild(btn);
                 });
@@ -2206,23 +2215,29 @@
             renderPaye(R, fige);
         }
 
-        // --- MODALE DE CONFIRMATION (thème sombre, remplace confirm() natif) ---
+        // --- MODALES THÉMATISÉES (remplacent confirm() et alert() natifs) ---
         let _confirmResolve = null;
-        function confirmerModal(message, options) {
+        function _ouvrirDialog(message, options, alerte) {
             options = options || {};
             return new Promise(resolve => {
                 _confirmResolve = resolve;
-                document.getElementById('confirmTitre').innerText = options.titre || 'Confirmer';
+                const titreEl = document.getElementById('confirmTitre');
+                titreEl.innerText = options.titre || '';
+                titreEl.classList.toggle('hidden', !options.titre);
                 document.getElementById('confirmMessage').innerText = message || '';
-                document.getElementById('confirmAnnuler').innerText = options.annulerLabel || 'Annuler';
+                const annuler = document.getElementById('confirmAnnuler');
+                annuler.classList.toggle('hidden', !!alerte);
+                annuler.innerText = options.annulerLabel || 'Annuler';
                 const okBtn = document.getElementById('confirmOk');
-                okBtn.innerText = options.okLabel || 'Valider';
+                okBtn.innerText = options.okLabel || (alerte ? 'OK' : 'Valider');
                 okBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-black transition active:scale-95 " + (options.danger
                     ? "text-white bg-gradient-to-r from-red-500 to-orange-500 hover:opacity-90"
                     : "text-slate-950 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-90");
                 document.getElementById('modalConfirm').classList.remove('hidden');
             });
         }
+        function confirmerModal(message, options) { return _ouvrirDialog(message, options, false); }
+        function alerterModal(message, options) { return _ouvrirDialog(message, options, true); }
         function _fermerConfirm(val) {
             document.getElementById('modalConfirm').classList.add('hidden');
             const resolve = _confirmResolve;
