@@ -138,6 +138,12 @@
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
+
+        /* Récap : on respecte l'encoche / la barre d'état iPhone (safe-area). */
+        #modalRecap {
+            padding-top: max(1.25rem, calc(env(safe-area-inset-top) + 0.75rem));
+            padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.75rem));
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white font-sans antialiased overflow-x-hidden">
@@ -621,6 +627,17 @@
                 <div class="flex gap-2">
                     <button onclick="fermerSelecteurMois()" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-300 bg-white/5 hover:bg-white/10 transition-all active:scale-95">Annuler</button>
                     <button onclick="validerSelecteurMois()" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-cyan-500 to-indigo-500 hover:opacity-90 transition-all active:scale-95">Valider</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modalConfirm" onclick="if(event.target===this) _fermerConfirm(false)" class="hidden fixed inset-0 z-[210] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <div class="glass-card rounded-2xl p-5 w-full max-w-xs border border-white/12 shadow-xl">
+                <p id="confirmTitre" class="text-sm font-black text-white mb-1.5 leading-snug"></p>
+                <p id="confirmMessage" class="text-[12px] text-slate-400 mb-4 leading-relaxed whitespace-pre-line"></p>
+                <div class="flex gap-2">
+                    <button id="confirmAnnuler" onclick="_fermerConfirm(false)" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-300 bg-white/5 hover:bg-white/10 transition active:scale-95">Annuler</button>
+                    <button id="confirmOk" onclick="_fermerConfirm(true)" class="flex-1 py-2.5 rounded-xl text-sm font-black transition active:scale-95">OK</button>
                 </div>
             </div>
         </div>
@@ -2190,12 +2207,39 @@
             renderPaye(R, fige);
         }
 
+        // --- MODALE DE CONFIRMATION (thème sombre, remplace confirm() natif) ---
+        let _confirmResolve = null;
+        function confirmerModal(message, options) {
+            options = options || {};
+            return new Promise(resolve => {
+                _confirmResolve = resolve;
+                document.getElementById('confirmTitre').innerText = options.titre || 'Confirmer';
+                document.getElementById('confirmMessage').innerText = message || '';
+                document.getElementById('confirmAnnuler').innerText = options.annulerLabel || 'Annuler';
+                const okBtn = document.getElementById('confirmOk');
+                okBtn.innerText = options.okLabel || 'Valider';
+                okBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-black transition active:scale-95 " + (options.danger
+                    ? "text-white bg-gradient-to-r from-red-500 to-orange-500 hover:opacity-90"
+                    : "text-slate-950 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-90");
+                document.getElementById('modalConfirm').classList.remove('hidden');
+            });
+        }
+        function _fermerConfirm(val) {
+            document.getElementById('modalConfirm').classList.add('hidden');
+            const resolve = _confirmResolve;
+            _confirmResolve = null;
+            if (resolve) resolve(val);
+        }
+
         // --- VALIDATION / DÉVALIDATION D'UNE PAYE ---
-        function validerPayeMois() {
+        async function validerPayeMois() {
             const enf = getEnfantActif();
             if (!enf) return;
             const mois = appState.moisEnCours;
-            if (!confirm("Valider la paye de " + labelMois(mois) + " ?\n\nLes montants seront figés : ils ne changeront plus, même si vous modifiez les paramètres plus tard. Vous pourrez toujours la modifier ensuite.")) return;
+            const ok = await confirmerModal(
+                "Les montants seront figés : ils ne changeront plus, même si vous modifiez les paramètres plus tard. Vous pourrez toujours la modifier ensuite.",
+                { titre: "Valider la paye de " + labelMois(mois) + " ?", okLabel: "Valider" });
+            if (!ok) return;
 
             const R = calculerPaye(enf, mois);
             R.validee = true;
@@ -2211,11 +2255,14 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function devaliderPayeMois() {
+        async function devaliderPayeMois() {
             const enf = getEnfantActif();
             if (!enf) return;
             const mois = appState.moisEnCours;
-            if (!confirm("Modifier la paye validée de " + labelMois(mois) + " ?\n\nLes montants redeviennent dynamiques et suivront de nouveau vos paramètres et votre planning. Pensez à re-valider une fois vos corrections faites.")) return;
+            const ok = await confirmerModal(
+                "Les montants redeviennent dynamiques et suivront de nouveau vos paramètres et votre planning. Pensez à re-valider une fois vos corrections faites.",
+                { titre: "Modifier la paye de " + labelMois(mois) + " ?", okLabel: "Modifier" });
+            if (!ok) return;
 
             if (enf.payesValidees) delete enf.payesValidees[mois];
             sauvegarderTout();
