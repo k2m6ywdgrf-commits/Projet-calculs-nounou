@@ -2433,8 +2433,13 @@
             ouvrirRecapPaye();
         }
 
-        function construireLegendeCalendrierRecap() {
-            const items = LEGENDE_CAL_RECAP.map(it => {
+        // N'affiche dans la légende que les catégories réellement présentes ce
+        // mois-ci sur le planning (calendrier de l'accueil) — pas de pastille
+        // "Férié" si aucun jour férié n'existe dans le mois, par exemple.
+        function construireLegendeCalendrierRecap(presence) {
+            const visibles = LEGENDE_CAL_RECAP.filter(it => presence && presence[it.cle]);
+            if (visibles.length === 0) return '';
+            const items = visibles.map(it => {
                 const actif = !!recapCalFiltres[it.cle];
                 return `<span onclick="toggleRecapCalFiltre('${it.cle}')" class="flex items-center gap-1 text-[7px] font-bold uppercase tracking-wide whitespace-nowrap transition cursor-pointer select-none ${actif ? 'text-slate-400' : 'text-slate-600 line-through opacity-50'}">
                     <span class="w-1.5 h-1.5 rounded-full shrink-0 ${actif ? it.dot : 'bg-slate-700'}"></span>${it.label}
@@ -2444,6 +2449,8 @@
         }
 
         // Petit calendrier visuel (lecture seule) inséré dans le récapitulatif de paie.
+        // Retourne aussi les catégories réellement présentes dans le mois, pour
+        // que la légende n'affiche que ce qui existe vraiment sur le planning.
         function construireMiniCalendrierRecap(enf, moisIso) {
             const parts = String(moisIso).split('-');
             const annee = parseInt(parts[0]);
@@ -2457,6 +2464,8 @@
 
             let cells = joursSemaine.map(j => `<div class="text-[8px] font-bold text-slate-500">${j}</div>`).join('');
             for (let i = 0; i < jourDepart; i++) cells += `<div></div>`;
+
+            const presence = { travaille: false, weekend: false, ferie: false, absence: false };
 
             for (let jour = 1; jour <= totalJoursDansMois; jour++) {
                 const date = new Date(annee, moisIndex, jour);
@@ -2472,19 +2481,23 @@
 
                 let cls = "text-[8px] font-bold rounded leading-[1.6] ";
                 if (nature === 'ferie') {
+                    presence.ferie = true;
                     cls += recapCalFiltres.ferie ? "bg-amber-500/25 text-amber-200" : "text-slate-400";
                 } else if (nature === 'weekend' && travaille) {
+                    presence.weekend = true;
                     cls += recapCalFiltres.weekend ? "bg-indigo-500/30 text-indigo-200" : "text-slate-400";
                 } else if (nature === 'ouvre' && travaille) {
+                    presence.travaille = true;
                     cls += recapCalFiltres.travaille ? "bg-cyan-500/20 text-cyan-200" : "text-slate-400";
                 } else if (nature === 'ouvre' && !travaille) {
+                    presence.absence = true;
                     cls += recapCalFiltres.absence ? "bg-red-500/20 text-red-300 line-through opacity-80" : "text-slate-600 line-through opacity-70";
                 } else {
                     cls += "text-slate-600";
                 }
                 cells += `<div class="${cls}">${jour}</div>`;
             }
-            return `<div class="grid grid-cols-7 gap-0.5 text-center">${cells}</div>`;
+            return { html: `<div class="grid grid-cols-7 gap-0.5 text-center">${cells}</div>`, presence };
         }
 
         // --- RÉCAPITULATIF DE PAIE (modale « belle fiche » pour capture d'écran) ---
@@ -2527,8 +2540,9 @@
             const badgeHtml = valide
                 ? `<span class="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-1 rounded-full">✓ Validée</span>`
                 : `<span class="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-1 rounded-full">● En cours</span>`;
-            const calendrierHtml = construireMiniCalendrierRecap(enf, mois);
-            const legendeHtml = construireLegendeCalendrierRecap();
+            const cal = construireMiniCalendrierRecap(enf, mois);
+            const calendrierHtml = cal.html;
+            const legendeHtml = construireLegendeCalendrierRecap(cal.presence);
 
             document.getElementById('recapCapture').innerHTML = `
                 <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950">
