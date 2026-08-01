@@ -2515,17 +2515,33 @@
             const nomEnfant = R.nomEnfant || enf.nomEnfant || '';
             const nomNounou = R.nomNounou || enf.nomNounou || '';
 
-            const ligne = (label, sub, montant) => `<div class="flex items-start justify-between gap-3 py-1.5 border-b border-white/5 last:border-0">
-                <div class="min-w-0"><p class="text-white text-[12px] font-semibold">${escapeHtml(label)}</p>${sub ? `<p class="text-[10px] text-slate-500">${escapeHtml(sub)}</p>` : ''}</div>
+            const ligne = (label, sousLignes, montant) => {
+                const lignesSub = (Array.isArray(sousLignes) ? sousLignes : (sousLignes ? [sousLignes] : []))
+                    .map(s => `<p class="text-[10px] text-slate-500">${s}</p>`).join('');
+                return `<div class="flex items-start justify-between gap-3 py-1.5 border-b border-white/5 last:border-0">
+                <div class="min-w-0"><p class="text-white text-[12px] font-semibold">${escapeHtml(label)}</p>${lignesSub}</div>
                 <p class="text-white text-[12px] font-bold whitespace-nowrap">${eurosFmt(montant)}</p>
             </div>`;
+            };
 
             let lignes = ligne('Heures normales', `${R.totalNormalHours} h × ${R.tauxNormal.toFixed(2)} €`, R.montantNormal);
             if ((R.totalMajoreHours || 0) > 0) lignes += ligne('Heures majorées', `${R.totalMajoreHours} h × ${R.tauxMajore.toFixed(2)} €`, R.montantMajore);
-            if (R.entretienOn && R.entretienTotal > 0.005) lignes += ligne("Indemnités d'entretien", '', R.entretienTotal);
-            if (R.repasOn && R.repasTotal > 0.005) lignes += ligne('Repas & collations', '', R.repasTotal);
-            if (R.kmOn && R.kmTotal > 0.005) lignes += ligne('Indemnités kilométriques', '', R.kmTotal);
-            if (R.cotisationsOn && R.cotisationsTotal > 0.005) lignes += ligne('Cotisations sociales', '', R.cotisationsTotal);
+            if (R.entretienOn && R.entretienTotal > 0.005) {
+                const sousLignes = (R.entretienDetails || []).map(d => `${escapeHtml(d.joursLabel)} (${d.heures} h) : ${d.count} j × ${d.tauxJour.toFixed(2)} €`);
+                lignes += ligne("Indemnités d'entretien", sousLignes, R.entretienTotal);
+            }
+            if (R.repasOn && R.repasTotal > 0.005) {
+                const sousLignes = (R.repasDetails || []).map(d => `${escapeHtml(d.nom)} : ${d.count} j × ${d.prix.toFixed(2)} €`);
+                lignes += ligne('Repas & collations', sousLignes, R.repasTotal);
+            }
+            if (R.kmOn && R.kmTotal > 0.005) {
+                const sousLignes = (R.kmDetails || []).map(d => `${escapeHtml(d.nom)} : ${d.count} j × ${d.distanceKm} km × ${d.tauxKm.toFixed(2)} €`);
+                lignes += ligne('Indemnités kilométriques', sousLignes, R.kmTotal);
+            }
+            if (R.cotisationsOn && R.cotisationsTotal > 0.005) {
+                const sousLignes = (R.cotisationsDetails || []).map(d => `${escapeHtml(d.nom)} (${escapeHtml(d.desc)})`);
+                lignes += ligne('Cotisations sociales', sousLignes, R.cotisationsTotal);
+            }
 
             let blocAcompte = '';
             if (R.acomptesOn && R.acompte > 0) {
