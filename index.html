@@ -2585,7 +2585,7 @@
 
                     <div class="px-5 py-3 bg-black/20 border-t border-white/10 flex items-center justify-between text-[9px] text-slate-500">
                         <span class="font-bold text-slate-400">${escapeHtml(modeLabel)}</span>
-                        <span>${valide ? (quand ? 'Validée le ' + quand : '') : 'Montants provisoires, sujets à évoluer'}</span>
+                        <span>${valide && quand ? 'Validée le ' + quand : ''}</span>
                     </div>
                 </div>`;
 
