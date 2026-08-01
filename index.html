@@ -291,7 +291,7 @@
                     <button id="btnValiderPaye" onclick="validerPayeMois()" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-90 text-slate-950 text-sm font-black px-4 py-3 rounded-2xl transition shadow-lg shadow-emerald-500/20 active:scale-[0.98]">
                         ✅ Valider la paye du mois
                     </button>
-                    <button id="btnRecapEnCours" onclick="ouvrirRecapPaye()" class="w-full mt-2 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold px-4 py-2.5 rounded-xl transition active:scale-[0.98]">
+                    <button id="btnRecapEnCours" onclick="ouvrirRecapPaye('nounou')" class="w-full mt-2 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold px-4 py-2.5 rounded-xl transition active:scale-[0.98]">
                         🧾 Voir le récapitulatif (en cours)
                     </button>
                     <div id="blocPayeValidee" class="hidden glass-card rounded-2xl p-4 border border-emerald-500/30 bg-emerald-950/10">
@@ -302,9 +302,14 @@
                         <p class="text-[11px] text-slate-400 mb-3">Les montants sont figés pour ce mois : ils ne changeront plus, même si vous modifiez les paramètres plus tard. Ce mois est comptabilisé dans l'onglet Analyses.</p>
                         <p id="dateValidationLabel" class="text-[10px] text-slate-500 mb-3"></p>
                         <div class="space-y-2">
-                            <button onclick="ouvrirRecapPaye()" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-indigo-500 hover:opacity-90 text-white text-sm font-black px-4 py-2.5 rounded-xl transition shadow-lg shadow-cyan-500/20 active:scale-[0.98]">
-                                🧾 Voir le récapitulatif
-                            </button>
+                            <div class="flex gap-2">
+                                <button onclick="ouvrirRecapPaye('nounou')" class="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-cyan-500 to-indigo-500 hover:opacity-90 text-white text-xs font-black px-2 py-2.5 rounded-xl transition shadow-lg shadow-cyan-500/20 active:scale-[0.98]">
+                                    🧾 Récap nounou
+                                </button>
+                                <button onclick="ouvrirRecapPaye('global')" class="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-black px-2 py-2.5 rounded-xl transition active:scale-[0.98]">
+                                    📊 Récap parents
+                                </button>
+                            </div>
                             <button onclick="devaliderPayeMois()" class="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold px-4 py-2.5 rounded-xl transition active:scale-[0.98]">
                                 ✏️ Modifier cette paye
                             </button>
@@ -2503,7 +2508,11 @@
         // --- RÉCAPITULATIF DE PAIE (modale « belle fiche » pour capture d'écran) ---
         // Fonctionne aussi bien sur une paye validée (montants figés) qu'une paye
         // en cours (montants calculés en direct depuis le planning actuel).
-        function ouvrirRecapPaye() {
+        // mode 'nounou' (défaut) : uniquement ce qu'elle touche, sans les
+        // cotisations patronales — c'est la version destinée à être envoyée.
+        // mode 'global' : vue complète pour les parents, cotisations incluses.
+        function ouvrirRecapPaye(mode) {
+            mode = mode === 'global' ? 'global' : 'nounou';
             const enf = getEnfantActif();
             if (!enf) return;
             const mois = appState.moisEnCours;
@@ -2538,18 +2547,37 @@
                 const sousLignes = (R.kmDetails || []).map(d => `${escapeHtml(d.nom)} : ${d.count} j × ${d.distanceKm} km × ${d.tauxKm.toFixed(2)} €`);
                 lignes += ligne('Indemnités kilométriques', sousLignes, R.kmTotal);
             }
-            if (R.cotisationsOn && R.cotisationsTotal > 0.005) {
+            // Cotisations patronales : uniquement sur la vue parents, jamais sur
+            // la vue nounou (elle ne les touche pas, elles vont à l'URSSAF).
+            if (mode === 'global' && R.cotisationsOn && R.cotisationsTotal > 0.005) {
                 const sousLignes = (R.cotisationsDetails || []).map(d => `${escapeHtml(d.nom)} (${escapeHtml(d.desc)})`);
                 lignes += ligne('Cotisations sociales', sousLignes, R.cotisationsTotal);
             }
 
+            const cotisationsTotal = R.cotisationsTotal || 0;
+            const montantNounou = R.totalGeneral - cotisationsTotal;
+            const montantAffiche = mode === 'global' ? R.totalGeneral : montantNounou;
+            const acompte = R.acompte || 0;
+            const resteAPayerAffiche = montantAffiche - acompte;
+
             let blocAcompte = '';
-            if (R.acomptesOn && R.acompte > 0) {
+            if (R.acomptesOn && acompte > 0) {
                 blocAcompte = `<div class="mt-2 pt-2 border-t border-white/10 space-y-1 text-[11px]">
-                    <div class="flex justify-between"><span class="text-slate-400">Acompte déjà versé</span><span class="text-orange-300 font-semibold">− ${eurosFmt(R.acompte)}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-300 font-bold">Reste à payer</span><span class="text-white font-black">${eurosFmt(R.resteAPayer)}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Acompte déjà versé</span><span class="text-orange-300 font-semibold">− ${eurosFmt(acompte)}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-300 font-bold">Reste à payer</span><span class="text-white font-black">${eurosFmt(resteAPayerAffiche)}</span></div>
                 </div>`;
             }
+
+            // Avertissement cotisations : seulement sur la vue parents, si elles
+            // sont désactivées (le total affiché est alors hors charges sociales).
+            const avertissementCotisations = (mode === 'global' && !R.cotisationsOn)
+                ? `<div class="rounded-xl bg-amber-500/10 border border-amber-500/25 px-3 py-2 text-[10px] font-bold text-amber-300 text-center uppercase tracking-wide">⚠️ Sommes nettes hors cotisations sociales</div>`
+                : '';
+
+            const totalLabel = mode === 'global'
+                ? ((R.cotisationsOn && cotisationsTotal > 0.005) ? 'Coût total employeur' : 'Coût total net')
+                : 'Total net à verser';
+            const sousTitreVue = mode === 'global' ? 'Vue parents' : 'Vue nounou';
 
             const quand = valide && R.dateValidation ? formatDateHeureFr(R.dateValidation) : '';
             const modeLabel = R.mensualise ? 'Contrat mensualisé' : 'Calcul au réel';
@@ -2565,7 +2593,7 @@
                     <div class="px-5 pt-5 pb-4 bg-gradient-to-r from-cyan-500/15 to-indigo-500/15 border-b border-white/10">
                         <div class="flex justify-between items-start gap-3">
                             <div class="min-w-0">
-                                <p class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Récapitulatif de paie</p>
+                                <p class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Récapitulatif de paie · ${sousTitreVue}</p>
                                 <h3 class="text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">${escapeHtml(labelMois(mois))}</h3>
                             </div>
                             ${badgeHtml}
@@ -2592,9 +2620,11 @@
 
                         <div>${lignes}</div>
 
+                        ${avertissementCotisations}
+
                         <div class="rounded-2xl bg-gradient-to-r from-cyan-500/10 to-indigo-500/10 border border-cyan-500/20 px-4 py-3 flex items-center justify-between">
-                            <span class="text-[10px] text-cyan-300 font-bold uppercase tracking-widest">Coût total net</span>
-                            <span class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-indigo-200">${eurosFmt(R.totalGeneral)}</span>
+                            <span class="text-[10px] text-cyan-300 font-bold uppercase tracking-widest">${totalLabel}</span>
+                            <span class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-indigo-200">${eurosFmt(montantAffiche)}</span>
                         </div>
                         ${blocAcompte}
                     </div>
