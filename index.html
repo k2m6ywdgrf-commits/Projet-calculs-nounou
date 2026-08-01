@@ -568,6 +568,57 @@
                     </div>
                 </div>
 
+                <div class="glass-card rounded-2xl p-4 space-y-3 border border-pink-500/20 bg-pink-950/5">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-pink-300">🧾 Récap Nounou — Lignes affichées</h3>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Choisissez ce qui apparaît sur la fiche envoyée à la nounou. Le récap parents affiche toujours tout. Le total qu'elle voit reste toujours exact, même si vous masquez une ligne.</p>
+                    </div>
+                    <div class="space-y-2 pt-2 border-t border-white/5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] text-slate-300">Heures majorées</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="paramRecapAfficheHeuresMajorees" class="sr-only peer" onchange="sauvegarderProfilActif()">
+                                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] text-slate-300">Indemnités d'entretien</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="paramRecapAfficheEntretien" class="sr-only peer" onchange="sauvegarderProfilActif()">
+                                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] text-slate-300">Repas & collations</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="paramRecapAfficheRepas" class="sr-only peer" onchange="sauvegarderProfilActif()">
+                                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] text-slate-300">Indemnités kilométriques</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="paramRecapAfficheKm" class="sr-only peer" onchange="sauvegarderProfilActif()">
+                                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] text-slate-300">Cotisations sociales <span class="block text-[9px] text-slate-500 font-normal">Indicatif : jamais compté dans son total</span></span>
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-2">
+                                <input type="checkbox" id="paramRecapAfficheCotisations" class="sr-only peer" onchange="sauvegarderProfilActif()">
+                                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] text-slate-300">Acompte / Reste à payer</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="paramRecapAfficheAcompte" class="sr-only peer" onchange="sauvegarderProfilActif()">
+                                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="blocParametresReel" class="glass-card rounded-2xl p-4 space-y-4">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300">⏱️ Paramètres de calcul au Réel</h3>
                     <div class="space-y-3">
@@ -831,7 +882,18 @@
             tauxHistorique: [],
             repasHistorique: [],
             kmHistorique: [],
-            cotisationsHistorique: []
+            cotisationsHistorique: [],
+            // Lignes affichées sur le récap NOUNOU uniquement (le récap parents
+            // affiche toujours tout). Les cotisations sont masquées par défaut
+            // puisqu'elle ne les touche pas ; réactivable à tout moment.
+            recapNounouAffiche: {
+                heuresMajorees: true,
+                entretien: true,
+                repas: true,
+                km: true,
+                cotisations: false,
+                acompte: true
+            }
         });
 
         document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
@@ -872,6 +934,12 @@
 
             ['mensualisationOn', 'entretienOn', 'repasOn', 'kmOn', 'acomptesOn', 'cotisationsOn'].forEach(champ => {
                 enf[champ] = !!enf[champ];
+            });
+
+            const brutAffiche = (brut && brut.recapNounouAffiche && typeof brut.recapNounouAffiche === 'object') ? brut.recapNounouAffiche : {};
+            enf.recapNounouAffiche = {};
+            ['heuresMajorees', 'entretien', 'repas', 'km', 'cotisations', 'acompte'].forEach(champ => {
+                enf.recapNounouAffiche[champ] = brutAffiche[champ] !== undefined ? !!brutAffiche[champ] : base.recapNounouAffiche[champ];
             });
 
             enf.entretienLignes = normaliserListe(enf.entretienLignes, 'el', item => ({
@@ -1366,6 +1434,14 @@
             document.getElementById('paramToggleAcomptes').checked = !!enf.acomptesOn;
             document.getElementById('paramToggleCotisations').checked = !!enf.cotisationsOn;
 
+            const affiche = enf.recapNounouAffiche || {};
+            document.getElementById('paramRecapAfficheHeuresMajorees').checked = affiche.heuresMajorees !== false;
+            document.getElementById('paramRecapAfficheEntretien').checked = affiche.entretien !== false;
+            document.getElementById('paramRecapAfficheRepas').checked = affiche.repas !== false;
+            document.getElementById('paramRecapAfficheKm').checked = affiche.km !== false;
+            document.getElementById('paramRecapAfficheCotisations').checked = !!affiche.cotisations;
+            document.getElementById('paramRecapAfficheAcompte').checked = affiche.acompte !== false;
+
             document.getElementById('paramToggleMensualise').checked = enf.mensualisationOn;
             document.getElementById('paramHrsMensuNormales').value = enf.mensualiseNormal;
             document.getElementById('paramHrsMensuMajorees').value = enf.mensualiseMajore;
@@ -1424,6 +1500,14 @@
             enf.kmOn = document.getElementById('paramToggleKm').checked;
             enf.acomptesOn = document.getElementById('paramToggleAcomptes').checked;
             enf.cotisationsOn = document.getElementById('paramToggleCotisations').checked;
+
+            if (!enf.recapNounouAffiche) enf.recapNounouAffiche = {};
+            enf.recapNounouAffiche.heuresMajorees = document.getElementById('paramRecapAfficheHeuresMajorees').checked;
+            enf.recapNounouAffiche.entretien = document.getElementById('paramRecapAfficheEntretien').checked;
+            enf.recapNounouAffiche.repas = document.getElementById('paramRecapAfficheRepas').checked;
+            enf.recapNounouAffiche.km = document.getElementById('paramRecapAfficheKm').checked;
+            enf.recapNounouAffiche.cotisations = document.getElementById('paramRecapAfficheCotisations').checked;
+            enf.recapNounouAffiche.acompte = document.getElementById('paramRecapAfficheAcompte').checked;
 
             enf.mensualisationOn = document.getElementById('paramToggleMensualise').checked;
             enf.mensualiseNormal = parseFloat(document.getElementById('paramHrsMensuNormales').value) || 0;
@@ -2533,24 +2617,38 @@
             </div>`;
             };
 
+            // Vue nounou : quelles lignes optionnelles afficher (réglable dans
+            // Configuration → « Récap Nounou »). Vue parents : toujours tout.
+            const afficheN = enf.recapNounouAffiche || {};
+            const montrer = (cle, defautVrai) => {
+                if (mode === 'global') return true;
+                const v = afficheN[cle];
+                return v !== undefined ? !!v : !!defautVrai;
+            };
+
             let lignes = ligne('Heures normales', `${R.totalNormalHours} h × ${R.tauxNormal.toFixed(2)} €`, R.montantNormal);
-            if ((R.totalMajoreHours || 0) > 0) lignes += ligne('Heures majorées', `${R.totalMajoreHours} h × ${R.tauxMajore.toFixed(2)} €`, R.montantMajore);
-            if (R.entretienOn && R.entretienTotal > 0.005) {
+            if ((R.totalMajoreHours || 0) > 0 && montrer('heuresMajorees', true)) {
+                lignes += ligne('Heures majorées', `${R.totalMajoreHours} h × ${R.tauxMajore.toFixed(2)} €`, R.montantMajore);
+            }
+            if (R.entretienOn && R.entretienTotal > 0.005 && montrer('entretien', true)) {
                 const sousLignes = (R.entretienDetails || []).map(d => `${escapeHtml(d.joursLabel)} (${d.heures} h) : ${d.count} j × ${d.tauxJour.toFixed(2)} €`);
                 lignes += ligne("Indemnités d'entretien", sousLignes, R.entretienTotal);
             }
-            if (R.repasOn && R.repasTotal > 0.005) {
+            if (R.repasOn && R.repasTotal > 0.005 && montrer('repas', true)) {
                 const sousLignes = (R.repasDetails || []).map(d => `${escapeHtml(d.nom)} : ${d.count} j × ${d.prix.toFixed(2)} €`);
                 lignes += ligne('Repas & collations', sousLignes, R.repasTotal);
             }
-            if (R.kmOn && R.kmTotal > 0.005) {
+            if (R.kmOn && R.kmTotal > 0.005 && montrer('km', true)) {
                 const sousLignes = (R.kmDetails || []).map(d => `${escapeHtml(d.nom)} : ${d.count} j × ${d.distanceKm} km × ${d.tauxKm.toFixed(2)} €`);
                 lignes += ligne('Indemnités kilométriques', sousLignes, R.kmTotal);
             }
-            // Cotisations patronales : uniquement sur la vue parents, jamais sur
-            // la vue nounou (elle ne les touche pas, elles vont à l'URSSAF).
-            if (mode === 'global' && R.cotisationsOn && R.cotisationsTotal > 0.005) {
+            // Cotisations patronales : sur la vue parents, toujours incluses
+            // dans le total. Sur la vue nounou, affichage optionnel — mais
+            // même si on les montre, elles ne sont JAMAIS comptées dans son
+            // total (elle ne les touche pas, elles vont à l'URSSAF).
+            if (R.cotisationsOn && R.cotisationsTotal > 0.005 && (mode === 'global' || montrer('cotisations', false))) {
                 const sousLignes = (R.cotisationsDetails || []).map(d => `${escapeHtml(d.nom)} (${escapeHtml(d.desc)})`);
+                if (mode === 'nounou') sousLignes.push('<span class="italic">Indicatif — non comprises dans ce total</span>');
                 lignes += ligne('Cotisations sociales', sousLignes, R.cotisationsTotal);
             }
 
@@ -2561,7 +2659,7 @@
             const resteAPayerAffiche = montantAffiche - acompte;
 
             let blocAcompte = '';
-            if (R.acomptesOn && acompte > 0) {
+            if (R.acomptesOn && acompte > 0 && montrer('acompte', true)) {
                 blocAcompte = `<div class="mt-2 pt-2 border-t border-white/10 space-y-1 text-[11px]">
                     <div class="flex justify-between"><span class="text-slate-400">Acompte déjà versé</span><span class="text-orange-300 font-semibold">− ${eurosFmt(acompte)}</span></div>
                     <div class="flex justify-between"><span class="text-slate-300 font-bold">Reste à payer</span><span class="text-white font-black">${eurosFmt(resteAPayerAffiche)}</span></div>
