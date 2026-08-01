@@ -571,7 +571,7 @@
                 <div class="glass-card rounded-2xl p-4 space-y-3 border border-pink-500/20 bg-pink-950/5">
                     <div>
                         <h3 class="text-xs font-bold uppercase tracking-wider text-pink-300">🧾 Récap Nounou — Lignes affichées</h3>
-                        <p class="text-[10px] text-slate-400 mt-0.5">Choisissez ce qui apparaît sur la fiche envoyée à la nounou. Le récap parents affiche toujours tout. Le total qu'elle voit reste toujours exact, même si vous masquez une ligne.</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Choisissez ce qui apparaît sur la fiche envoyée à la nounou. Le récap parents affiche toujours tout. Masquer une ligne ne change pas son total (ces sommes lui reviennent), sauf pour les cotisations : si vous les affichez, elles sont alors comptées dans son total.</p>
                     </div>
                     <div class="space-y-2 pt-2 border-t border-white/5">
                         <div class="flex items-center justify-between">
@@ -603,7 +603,7 @@
                             </label>
                         </div>
                         <div class="flex items-center justify-between">
-                            <span class="text-[11px] text-slate-300">Cotisations sociales <span class="block text-[9px] text-slate-500 font-normal">Indicatif : jamais compté dans son total</span></span>
+                            <span class="text-[11px] text-slate-300">Cotisations sociales <span class="block text-[9px] text-slate-500 font-normal">Si activé, comptées dans son total</span></span>
                             <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-2">
                                 <input type="checkbox" id="paramRecapAfficheCotisations" class="sr-only peer" onchange="sauvegarderProfilActif()">
                                 <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
@@ -665,9 +665,12 @@
                         <span id="syncStatusPill" class="text-[10px] font-mono px-2 py-0.5 rounded-full border bg-slate-500/15 text-slate-300 border-slate-500/30">Local</span>
                     </div>
                     <p class="text-[10px] text-slate-400">Connectez-vous avec Google pour sauvegarder vos données dans le cloud et les retrouver sur tous vos appareils. L'app reste 100 % fonctionnelle hors-ligne.</p>
-                    <p id="cloudUserEmail" class="text-[11px] text-cyan-200 font-semibold truncate hidden"></p>
+                    <div id="cloudProfilBloc" class="hidden flex items-center gap-2.5">
+                        <img id="cloudUserAvatar" src="" alt="" class="hidden w-8 h-8 rounded-full border border-white/10 shrink-0 object-cover">
+                        <p id="cloudUserEmail" class="min-w-0 text-[11px] text-cyan-200 font-semibold truncate"></p>
+                    </div>
                     <div id="cloudUidBloc" class="hidden p-2 rounded-xl bg-white/5 border border-white/10 space-y-1.5">
-                        <p class="text-[9px] text-slate-400 uppercase tracking-wide font-bold">Ton identifiant (UID) — à mettre dans les règles Firestore</p>
+                        <p class="text-[9px] text-slate-400 uppercase tracking-wide font-bold">Identifiant</p>
                         <div class="flex items-center gap-2">
                             <code id="cloudUserUid" class="flex-1 min-w-0 text-[10px] text-slate-200 font-mono break-all"></code>
                             <button id="btnCopyUid" onclick="copierUid()" class="shrink-0 text-[10px] font-bold text-cyan-300 border border-cyan-500/30 rounded-lg px-2 py-1 active:scale-95">📋 Copier</button>
@@ -1229,7 +1232,9 @@
             const pill = document.getElementById('syncStatusPill');
             const btnIn = document.getElementById('btnCloudSignIn');
             const btnOut = document.getElementById('btnCloudSignOut');
+            const profilBloc = document.getElementById('cloudProfilBloc');
             const emailEl = document.getElementById('cloudUserEmail');
+            const avatarEl = document.getElementById('cloudUserAvatar');
             const uidBloc = document.getElementById('cloudUidBloc');
             const uidEl = document.getElementById('cloudUserUid');
             const hint = document.getElementById('cloudHint');
@@ -1258,7 +1263,7 @@
                 setPill("Non configuré", "bg-slate-500/15 text-slate-300 border-slate-500/30");
                 if (btnIn) btnIn.classList.add('hidden');
                 if (btnOut) btnOut.classList.add('hidden');
-                if (emailEl) emailEl.classList.add('hidden');
+                if (profilBloc) profilBloc.classList.add('hidden');
                 if (uidBloc) uidBloc.classList.add('hidden');
                 if (hint) hint.classList.remove('hidden');
                 setHeaderCloud(false);
@@ -1270,7 +1275,7 @@
                 setPill("Local", "bg-slate-500/15 text-slate-300 border-slate-500/30");
                 if (btnIn) btnIn.classList.remove('hidden');
                 if (btnOut) btnOut.classList.add('hidden');
-                if (emailEl) emailEl.classList.add('hidden');
+                if (profilBloc) profilBloc.classList.add('hidden');
                 if (uidBloc) uidBloc.classList.add('hidden');
                 setHeaderCloud(true, "text-slate-500", false, "Cloud disponible — non connecté");
                 return;
@@ -1278,9 +1283,17 @@
 
             if (btnIn) btnIn.classList.add('hidden');
             if (btnOut) btnOut.classList.remove('hidden');
-            if (emailEl) {
-                emailEl.classList.remove('hidden');
-                emailEl.innerText = user.email || user.displayName || "Connecté";
+            if (profilBloc) profilBloc.classList.remove('hidden');
+            if (emailEl) emailEl.innerText = user.email || user.displayName || "Connecté";
+            if (avatarEl) {
+                if (user.photoURL) {
+                    avatarEl.src = user.photoURL;
+                    avatarEl.alt = user.displayName || user.email || '';
+                    avatarEl.classList.remove('hidden');
+                } else {
+                    avatarEl.removeAttribute('src');
+                    avatarEl.classList.add('hidden');
+                }
             }
             if (uidBloc && uidEl) {
                 uidBloc.classList.remove('hidden');
@@ -1373,6 +1386,10 @@
                     sauvegarderTout();
                     renderTabsEnfants();
                     chargerProfilEnEcran(enf.id);
+                    // Le Dashboard se rafraîchit via chargerProfilEnEcran ; l'onglet
+                    // Analyses a son propre rendu (filtré sur l'enfant actif), à
+                    // rafraîchir explicitement s'il est affiché au moment du switch.
+                    if (ongletActif === 'stats') renderStats();
                 };
                 container.appendChild(btn);
             });
@@ -2642,19 +2659,18 @@
                 const sousLignes = (R.kmDetails || []).map(d => `${escapeHtml(d.nom)} : ${d.count} j × ${d.distanceKm} km × ${d.tauxKm.toFixed(2)} €`);
                 lignes += ligne('Indemnités kilométriques', sousLignes, R.kmTotal);
             }
-            // Cotisations patronales : sur la vue parents, toujours incluses
-            // dans le total. Sur la vue nounou, affichage optionnel — mais
-            // même si on les montre, elles ne sont JAMAIS comptées dans son
-            // total (elle ne les touche pas, elles vont à l'URSSAF).
-            if (R.cotisationsOn && R.cotisationsTotal > 0.005 && (mode === 'global' || montrer('cotisations', false))) {
+            // Cotisations patronales : sur la vue parents, toujours affichées
+            // et comptées dans le total. Sur la vue nounou, affichage optionnel
+            // (réglage « Récap Nounou ») — et si on choisit de les montrer,
+            // elles sont alors comptées dans son total, comme les autres lignes.
+            const cotisationsMontrees = mode === 'global' || montrer('cotisations', false);
+            if (R.cotisationsOn && R.cotisationsTotal > 0.005 && cotisationsMontrees) {
                 const sousLignes = (R.cotisationsDetails || []).map(d => `${escapeHtml(d.nom)} (${escapeHtml(d.desc)})`);
-                if (mode === 'nounou') sousLignes.push('<span class="italic">Indicatif — non comprises dans ce total</span>');
                 lignes += ligne('Cotisations sociales', sousLignes, R.cotisationsTotal);
             }
 
             const cotisationsTotal = R.cotisationsTotal || 0;
-            const montantNounou = R.totalGeneral - cotisationsTotal;
-            const montantAffiche = mode === 'global' ? R.totalGeneral : montantNounou;
+            const montantAffiche = cotisationsMontrees ? R.totalGeneral : (R.totalGeneral - cotisationsTotal);
             const acompte = R.acompte || 0;
             const resteAPayerAffiche = montantAffiche - acompte;
 
@@ -2675,7 +2691,7 @@
             const totalLabel = mode === 'global'
                 ? ((R.cotisationsOn && cotisationsTotal > 0.005) ? 'Coût total employeur' : 'Coût total net')
                 : 'Total net à verser';
-            const sousTitreVue = mode === 'global' ? 'Vue parents' : 'Vue nounou';
+            const sousTitreVue = mode === 'global' ? ' · Vue parents' : '';
 
             const quand = valide && R.dateValidation ? formatDateHeureFr(R.dateValidation) : '';
             const modeLabel = R.mensualise ? 'Contrat mensualisé' : 'Calcul au réel';
@@ -2691,7 +2707,7 @@
                     <div class="px-5 pt-5 pb-4 bg-gradient-to-r from-cyan-500/15 to-indigo-500/15 border-b border-white/10">
                         <div class="flex justify-between items-start gap-3">
                             <div class="min-w-0">
-                                <p class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Récapitulatif de paie · ${sousTitreVue}</p>
+                                <p class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Récapitulatif de paie${sousTitreVue}</p>
                                 <h3 class="text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">${escapeHtml(labelMois(mois))}</h3>
                             </div>
                             ${badgeHtml}
