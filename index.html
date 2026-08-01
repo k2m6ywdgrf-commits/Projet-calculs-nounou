@@ -2417,6 +2417,32 @@
             mettreAJourCompteurs();
         }
 
+        // Filtres d'affichage des couleurs du mini calendrier du récapitulatif
+        // (activés/désactivés en cliquant sur la légende, sous le calendrier).
+        let recapCalFiltres = { travaille: true, weekend: true, ferie: true, absence: true };
+
+        const LEGENDE_CAL_RECAP = [
+            { cle: 'travaille', label: 'Travaillé', dot: 'bg-cyan-400' },
+            { cle: 'weekend', label: 'Week-end', dot: 'bg-indigo-400' },
+            { cle: 'ferie', label: 'Férié', dot: 'bg-amber-400' },
+            { cle: 'absence', label: 'Absence', dot: 'bg-red-400' }
+        ];
+
+        function toggleRecapCalFiltre(cle) {
+            recapCalFiltres[cle] = !recapCalFiltres[cle];
+            ouvrirRecapPaye();
+        }
+
+        function construireLegendeCalendrierRecap() {
+            const items = LEGENDE_CAL_RECAP.map(it => {
+                const actif = !!recapCalFiltres[it.cle];
+                return `<button type="button" onclick="toggleRecapCalFiltre('${it.cle}')" class="flex items-center gap-1 text-[7px] font-bold uppercase tracking-wide transition ${actif ? 'text-slate-400' : 'text-slate-600 line-through opacity-50'}">
+                    <span class="w-1.5 h-1.5 rounded-full shrink-0 ${actif ? it.dot : 'bg-slate-700'}"></span>${it.label}
+                </button>`;
+            }).join('');
+            return `<div class="flex items-center justify-center gap-x-2.5 mt-1.5 pt-1.5 border-t border-white/5">${items}</div>`;
+        }
+
         // Petit calendrier visuel (lecture seule) inséré dans le récapitulatif de paie.
         function construireMiniCalendrierRecap(enf, moisIso) {
             const parts = String(moisIso).split('-');
@@ -2440,9 +2466,19 @@
                 const estFerie = joursFeries.includes(iso);
                 const travaille = estJourTravaille(enf, date);
 
+                let nature = 'ouvre';
+                if (estWeekend) nature = 'weekend';
+                if (estFerie) nature = 'ferie';
+
                 let cls = "text-[8px] font-bold rounded leading-[1.6] ";
-                if (travaille) {
-                    cls += estFerie ? "bg-gradient-to-br from-amber-500/40 to-cyan-500/30 text-cyan-200" : (estWeekend ? "bg-indigo-500/30 text-indigo-200" : "bg-cyan-500/20 text-cyan-200");
+                if (nature === 'ferie') {
+                    cls += recapCalFiltres.ferie ? "bg-amber-500/25 text-amber-200" : "text-slate-400";
+                } else if (nature === 'weekend' && travaille) {
+                    cls += recapCalFiltres.weekend ? "bg-indigo-500/30 text-indigo-200" : "text-slate-400";
+                } else if (nature === 'ouvre' && travaille) {
+                    cls += recapCalFiltres.travaille ? "bg-cyan-500/20 text-cyan-200" : "text-slate-400";
+                } else if (nature === 'ouvre' && !travaille) {
+                    cls += recapCalFiltres.absence ? "bg-red-500/20 text-red-300 line-through opacity-80" : "text-slate-600 line-through opacity-70";
                 } else {
                     cls += "text-slate-600";
                 }
@@ -2492,6 +2528,7 @@
                 ? `<span class="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-1 rounded-full">✓ Validée</span>`
                 : `<span class="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-1 rounded-full">● En cours</span>`;
             const calendrierHtml = construireMiniCalendrierRecap(enf, mois);
+            const legendeHtml = construireLegendeCalendrierRecap();
 
             document.getElementById('recapCapture').innerHTML = `
                 <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950">
@@ -2521,7 +2558,7 @@
                             </div>
                         </div>
 
-                        <div class="rounded-xl bg-white/5 border border-white/8 p-2">${calendrierHtml}</div>
+                        <div class="rounded-xl bg-white/5 border border-white/8 p-2">${calendrierHtml}${legendeHtml}</div>
 
                         <div>${lignes}</div>
 
