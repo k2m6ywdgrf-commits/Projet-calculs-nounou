@@ -3037,11 +3037,16 @@
             let pushTimer = null;
             let dernierPayload = null;
 
-            // Base COMMUNE : les deux comptes (toi + ta copine) pointent vers le
-            // même document → même vue, mêmes données. Les Règles Firestore
-            // n'autorisent que vos deux UID (voir la config console).
-            const SHARED_SPACE = 'couple';
-            const spaceDoc = () => doc(db, 'shared', SHARED_SPACE);
+            // Base COMMUNE réservée à vous deux (toi + ta copine) : ces deux UID
+            // pointent vers le même document 'couple' → même vue, mêmes données.
+            // Tout autre compte qui se connecte à l'appli obtient sa propre base
+            // personnelle, isolée, indexée par son propre UID. Les Règles
+            // Firestore appliquent cette même logique côté serveur (voir la
+            // config console) : personne ne peut lire/écrire l'espace de
+            // quelqu'un d'autre.
+            const COUPLE_UIDS = ['Alct05tMGtTLkWFg5dJbldNCnPG2', '8BCndDEjbUYc7n6qTB6G8uzp2TN2'];
+            const spaceIdPour = (user) => (user && COUPLE_UIDS.includes(user.uid)) ? 'couple' : user.uid;
+            const spaceDoc = () => doc(db, 'shared', spaceIdPour(currentUser));
 
             const Cloud = {
                 isSignedIn: () => !!currentUser,
