@@ -1,0 +1,15 @@
+{
+  "name": "nounoupay",
+  "private": true,
+  "description": "NounouPay — application statique (aucun build). Ce fichier ne sert qu'à documenter les versions des dépendances chargées par CDN dans index.html et sw.js, et à faire tourner les tests.",
+  "dependencies-cdn": {
+    "@tailwindcss/browser": "4.3.3",
+    "firebase": "12.16.0"
+  },
+  "devDependencies": {
+    "jsdom": "30.0.1"
+  },
+  "scripts": {
+    "test": "node tests/calculerPaye.test.js"
+  }
+}

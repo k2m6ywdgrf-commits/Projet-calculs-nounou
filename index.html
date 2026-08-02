@@ -18,7 +18,7 @@
             });
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3"></script>
     <style>
         body {
             touch-action: manipulation;
@@ -160,18 +160,18 @@
                     <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Suivi de Garde</span>
                     <div class="flex items-center gap-1.5">
                         <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">NounouPay</h1>
-                        <button id="headerCloudIcon" onclick="ouvrirModalCloud()" title="État du cloud" class="inline-flex items-center text-slate-500 transition-colors active:scale-90">
+                        <button id="headerCloudIcon" onclick="ouvrirModalCloud()" title="État du cloud" aria-label="État du cloud" class="inline-flex items-center text-slate-500 transition-colors active:scale-90">
                             <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
                         </button>
                     </div>
                 </div>
                 <div class="flex items-center rounded-2xl overflow-hidden glass-card border border-cyan-500/25 shadow-[0_0_16px_rgba(6,182,212,0.1)]">
-                    <button onclick="changerMoisRelative(-1)" class="h-10 w-9 flex items-center justify-center text-cyan-400 hover:bg-white/10 active:bg-cyan-500/20 transition-all active:scale-90 border-r border-white/5 text-lg leading-none">‹</button>
+                    <button onclick="changerMoisRelative(-1)" aria-label="Mois précédent" class="h-10 w-9 flex items-center justify-center text-cyan-400 hover:bg-white/10 active:bg-cyan-500/20 transition-all active:scale-90 border-r border-white/5 text-lg leading-none">‹</button>
                     <button onclick="ouvrirSelecteurMois()" class="flex flex-col items-center px-2 py-1.5 hover:bg-white/5 transition-colors min-w-[104px]">
                         <span class="text-[7.5px] text-cyan-500/60 uppercase tracking-[0.18em] font-bold leading-none mb-1">Période</span>
                         <span id="labelPeriode" class="text-[13px] font-extrabold bg-gradient-to-r from-cyan-300 to-indigo-300 bg-clip-text text-transparent whitespace-nowrap leading-tight"></span>
                     </button>
-                    <button onclick="changerMoisRelative(1)" class="h-10 w-9 flex items-center justify-center text-cyan-400 hover:bg-white/10 active:bg-cyan-500/20 transition-all active:scale-90 border-l border-white/5 text-lg leading-none">›</button>
+                    <button onclick="changerMoisRelative(1)" aria-label="Mois suivant" class="h-10 w-9 flex items-center justify-center text-cyan-400 hover:bg-white/10 active:bg-cyan-500/20 transition-all active:scale-90 border-l border-white/5 text-lg leading-none">›</button>
                 </div>
             </div>
             <div id="tabsEnfantsContainer" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
@@ -746,7 +746,7 @@
             <div class="glass-card rounded-2xl p-5 w-full max-w-xs border border-cyan-500/25 shadow-xl">
                 <div class="flex justify-between items-center mb-3">
                     <p class="text-[11px] text-cyan-500/70 uppercase tracking-widest font-bold">État du cloud</p>
-                    <button onclick="fermerModalCloud()" class="text-slate-400 hover:text-white text-lg leading-none px-1">✕</button>
+                    <button onclick="fermerModalCloud()" aria-label="Fermer" class="text-slate-400 hover:text-white text-lg leading-none px-1">✕</button>
                 </div>
                 <div id="cloudModalStatut" class="p-3 rounded-xl bg-white/5 border border-white/5 mb-4"></div>
                 <p class="text-[10px] text-slate-400 uppercase tracking-wide font-bold mb-2">Signification de l'icône</p>
@@ -907,6 +907,12 @@
             return Number.isFinite(n) ? n : defaut;
         }
 
+        // Nombre borné (protège contre une sauvegarde importée ou une donnée
+        // cloud corrompue qui injecterait une valeur aberrante, ex. 9999h/jour).
+        function toNombreBorne(valeur, defaut, min, max) {
+            return Math.min(max, Math.max(min, toNombre(valeur, defaut)));
+        }
+
         function idValide(id) {
             return (typeof id === 'number' && Number.isFinite(id)) || /^[A-Za-z0-9_.-]+$/.test(String(id));
         }
@@ -931,9 +937,15 @@
             enf.nomNounou = typeof enf.nomNounou === 'string' ? enf.nomNounou : base.nomNounou;
 
             ['tauxNormal', 'majorationPct', 'tauxMajore', 'entretienBaseReference', 'entretienPlancherMinimal',
-             'heuresJour', 'seuilHebdo', 'mensualiseNormal', 'mensualiseMajore'].forEach(champ => {
-                enf[champ] = toNombre(enf[champ], base[champ]);
+             'mensualiseNormal', 'mensualiseMajore'].forEach(champ => {
+                enf[champ] = toNombreBorne(enf[champ], base[champ], 0, 10000);
             });
+            // Bornes alignées sur les curseurs de l'UI (Heures de garde / jour,
+            // Seuil majoration hebdomadaire) : une valeur importée hors plage
+            // resterait sinon invisible tant que l'utilisateur ne rouvre pas
+            // le réglage correspondant, mais fausserait déjà les calculs.
+            enf.heuresJour = toNombreBorne(enf.heuresJour, base.heuresJour, 1, 12);
+            enf.seuilHebdo = toNombreBorne(enf.seuilHebdo, base.seuilHebdo, 35, 50);
 
             ['mensualisationOn', 'entretienOn', 'repasOn', 'kmOn', 'acomptesOn', 'cotisationsOn'].forEach(champ => {
                 enf[champ] = !!enf[champ];
@@ -947,27 +959,27 @@
 
             enf.entretienLignes = normaliserListe(enf.entretienLignes, 'el', item => ({
                 jours: Array.isArray(item.jours) ? item.jours.map(Number).filter(j => Number.isInteger(j) && j >= 0 && j <= 6) : [],
-                heures: toNombre(item.heures, 0)
+                heures: toNombreBorne(item.heures, 0, 0, 24)
             }));
             enf.repasList = normaliserListe(enf.repasList, 'r', item => ({
                 nom: typeof item.nom === 'string' ? item.nom : '',
-                prix: toNombre(item.prix, 0)
+                prix: toNombreBorne(item.prix, 0, 0, 10000)
             }));
             enf.kmTrajets = normaliserListe(enf.kmTrajets, 'k', item => ({
                 nom: typeof item.nom === 'string' ? item.nom : '',
-                distanceKm: toNombre(item.distanceKm, 0),
-                tauxKm: toNombre(item.tauxKm, 0)
+                distanceKm: toNombreBorne(item.distanceKm, 0, 0, 10000),
+                tauxKm: toNombreBorne(item.tauxKm, 0, 0, 10000)
             }));
             enf.cotisations = normaliserListe(enf.cotisations, 'c', item => ({
                 nom: typeof item.nom === 'string' ? item.nom : '',
                 baseType: ['net', 'heure', 'net_maj', 'heure_maj'].includes(item.baseType) ? item.baseType : 'net',
-                taux: toNombre(item.taux, 0)
+                taux: toNombreBorne(item.taux, 0, 0, 10000)
             }));
 
             const acomptes = {};
             if (enf.acomptesParMois && typeof enf.acomptesParMois === 'object') {
                 Object.keys(enf.acomptesParMois).forEach(mois => {
-                    if (/^\d{4}-\d{2}$/.test(mois)) acomptes[mois] = toNombre(enf.acomptesParMois[mois], 0);
+                    if (/^\d{4}-\d{2}$/.test(mois)) acomptes[mois] = toNombreBorne(enf.acomptesParMois[mois], 0, 0, 1000000);
                 });
             }
             enf.acomptesParMois = acomptes;
@@ -1692,7 +1704,7 @@
                 div.innerHTML = `
                     <input type="text" value="${escapeHtml(repas.nom)}" placeholder="Nom" class="flex-1 min-w-0 glass-input px-2 py-1 rounded-lg text-xs" oninput="modifierLigneRepas('${repas.id}', 'nom', this.value)">
                     <input type="number" step="0.01" value="${escapeHtml(repas.prix)}" placeholder="Prix" inputmode="decimal" class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-xs text-right" oninput="modifierLigneRepas('${repas.id}', 'prix', this.value)">
-                    <button onclick="supprimerLigneRepas('${repas.id}')" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
+                    <button onclick="supprimerLigneRepas('${repas.id}')" aria-label="Supprimer cette ration" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
                 `;
                 container.appendChild(div);
             });
@@ -1749,7 +1761,7 @@
                             <input type="number" step="0.01" value="${escapeHtml(trajet.tauxKm)}" inputmode="decimal" placeholder="Barème" class="w-full glass-input px-2 py-1 rounded-lg text-xs text-right" oninput="modifierLigneKm('${trajet.id}', 'tauxKm', this.value)">
                             <span class="text-[10px] text-slate-400 shrink-0">€/km</span>
                         </div>
-                        <button onclick="supprimerLigneKm('${trajet.id}')" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
+                        <button onclick="supprimerLigneKm('${trajet.id}')" aria-label="Supprimer ce trajet" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
                     </div>
                 `;
                 container.appendChild(div);
@@ -1807,8 +1819,8 @@
 
         // --- GESTION DES LIGNES D'ENTRETIEN ---
         const JOURS_SEMAINE_BTN = [
-            { label: 'L', idx: 1 }, { label: 'M', idx: 2 }, { label: 'M', idx: 3 },
-            { label: 'J', idx: 4 }, { label: 'V', idx: 5 }, { label: 'S', idx: 6 }, { label: 'D', idx: 0 }
+            { label: 'L', idx: 1, nomComplet: 'Lundi' }, { label: 'M', idx: 2, nomComplet: 'Mardi' }, { label: 'M', idx: 3, nomComplet: 'Mercredi' },
+            { label: 'J', idx: 4, nomComplet: 'Jeudi' }, { label: 'V', idx: 5, nomComplet: 'Vendredi' }, { label: 'S', idx: 6, nomComplet: 'Samedi' }, { label: 'D', idx: 0, nomComplet: 'Dimanche' }
         ];
 
         function renderListeLignesEntretien(enf) {
@@ -1849,8 +1861,8 @@
                     if (actif) cls += 'bg-emerald-500/30 text-emerald-200 border-emerald-400/50';
                     else if (conflit) cls += 'bg-red-500/20 text-red-400 border-red-500/40';
                     else cls += 'bg-white/5 text-slate-500 border-white/10 hover:text-slate-300 hover:border-white/20';
-                    const title = conflit ? 'title="Jour déjà utilisé dans une autre ligne"' : '';
-                    return `<button onclick="toggleJourLigne('${ligne.id}', ${j.idx})" class="${cls}" ${title}>${j.label}</button>`;
+                    const title = conflit ? `title="${j.nomComplet} : déjà utilisé dans une autre ligne"` : '';
+                    return `<button onclick="toggleJourLigne('${ligne.id}', ${j.idx})" class="${cls}" aria-label="${j.nomComplet}" aria-pressed="${actif ? 'true' : 'false'}" ${title}>${j.label}</button>`;
                 }).join('');
 
                 div.innerHTML = `
@@ -1860,7 +1872,7 @@
                             class="flex-1 min-w-0 glass-input px-3 py-1.5 rounded-lg text-sm font-bold text-center"
                             onblur="modifierLigneEntretien('${ligne.id}', 'heures', this.value)">
                         <span class="text-sm text-emerald-300 font-black shrink-0">= ${tauxCalcule.toFixed(2)} €/j</span>
-                        <button onclick="supprimerLigneEntretien('${ligne.id}')" class="text-slate-600 hover:text-red-400 text-sm px-1 transition-colors shrink-0">✕</button>
+                        <button onclick="supprimerLigneEntretien('${ligne.id}')" aria-label="Supprimer cette ligne" class="text-slate-600 hover:text-red-400 text-sm px-1 transition-colors shrink-0">✕</button>
                     </div>
                 `;
                 container.appendChild(div);
@@ -1922,8 +1934,18 @@
             if (ligne) {
                 if (!ligne.jours) ligne.jours = [];
                 const idx = ligne.jours.indexOf(jour);
-                if (idx >= 0) ligne.jours.splice(idx, 1);
-                else ligne.jours.push(jour);
+                if (idx >= 0) {
+                    ligne.jours.splice(idx, 1);
+                } else {
+                    // Un jour déjà pris par une autre ligne ne peut pas être
+                    // ajouté ici : sinon seule la première ligne du tableau
+                    // compterait ce jour au calcul, l'autre serait ignorée en
+                    // silence (voir calculerPaye). Le liseré rouge du bouton
+                    // signale déjà le conflit ; on le fait aussi respecter.
+                    const dejaPris = enf.entretienLignes.some(l => l.id !== ligneId && l.jours && l.jours.includes(jour));
+                    if (dejaPris) return;
+                    ligne.jours.push(jour);
+                }
             }
             sauvegarderTout();
             renderListeLignesEntretien(enf);
@@ -1949,7 +1971,7 @@
                             <option value="heure_maj" ${cot.baseType === 'heure_maj' ? 'selected' : ''}>€/Heure (Heures Sup.)</option>
                         </select>
                         <input type="number" step="0.01" value="${escapeHtml(cot.taux)}" inputmode="decimal" class="w-16 shrink-0 glass-input px-2 py-1 rounded-lg text-xs text-right font-bold text-red-300" oninput="modifierLigneCotisation('${cot.id}', 'taux', this.value)">
-                        <button onclick="supprimerLigneCotisation('${cot.id}')" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
+                        <button onclick="supprimerLigneCotisation('${cot.id}')" aria-label="Supprimer cette cotisation" class="text-red-400 text-xs px-1 font-bold shrink-0">❌</button>
                     </div>
                 `;
                 container.appendChild(div);
@@ -2175,6 +2197,27 @@
             return !!(enf && enf.payesValidees && enf.payesValidees[mois] && enf.payesValidees[mois].validee);
         }
 
+        // Résout la valeur d'un historique daté (taux, repas, km, cotisations)
+        // en vigueur pour un mois donné : la dernière entrée dont la date est
+        // antérieure ou égale à la fin de ce mois. Permet à un mois PASSÉ non
+        // validé de se calculer avec les tarifs d'époque plutôt qu'avec les
+        // tarifs actuels du profil (voir enregistrerHistoriqueTaux /
+        // enregistrerHistoriqueListe, qui alimentent ces historiques).
+        function valeurHistoriquePourMois(historique, moisIso) {
+            if (!Array.isArray(historique) || historique.length === 0) return null;
+            const [anneeStr, moisStr] = String(moisIso).split('-');
+            const dernierJour = new Date(parseInt(anneeStr), parseInt(moisStr), 0).getDate();
+            const finMoisIso = `${anneeStr}-${moisStr}-${String(dernierJour).padStart(2, '0')}`;
+            let meilleure = null;
+            for (const h of historique) {
+                if (h.date <= finMoisIso && (!meilleure || h.date > meilleure.date)) meilleure = h;
+            }
+            // Mois antérieur à toute donnée connue : on prend la plus ancienne
+            // entrée disponible, faute de mieux.
+            if (!meilleure) meilleure = historique.reduce((a, b) => (a.date < b.date ? a : b));
+            return meilleure;
+        }
+
         // ============================================================
         // CALCUL PUR D'UNE PAYE (sans dépendance au DOM) → objet chiffré.
         // Utilisé pour l'affichage dynamique ET pour figer un instantané
@@ -2185,6 +2228,20 @@
             const annee = parseInt(parts[0]);
             const moisIndex = parseInt(parts[1]) - 1;
             const totalJoursMois = new Date(annee, moisIndex + 1, 0).getDate();
+
+            // Tarifs "en vigueur ce mois-ci" : pour la plupart des profils (qui
+            // n'ont jamais changé de tarif), c'est exactement équivalent aux
+            // valeurs actuelles ci-dessous. Ça ne change le résultat que pour
+            // un mois passé, non encore validé, dont le tarif a changé depuis.
+            const tauxHist = valeurHistoriquePourMois(enf.tauxHistorique, moisIso);
+            const tauxNormalEffectif = tauxHist ? tauxHist.tauxNormal : enf.tauxNormal;
+            const tauxMajoreEffectif = tauxHist ? tauxHist.tauxMajore : enf.tauxMajore;
+            const repasHist = valeurHistoriquePourMois(enf.repasHistorique, moisIso);
+            const repasListEffectif = repasHist ? repasHist.items : enf.repasList;
+            const kmHist = valeurHistoriquePourMois(enf.kmHistorique, moisIso);
+            const kmTrajetsEffectif = kmHist ? kmHist.items : enf.kmTrajets;
+            const cotisationsHist = valeurHistoriquePourMois(enf.cotisationsHistorique, moisIso);
+            const cotisationsEffectif = cotisationsHist ? cotisationsHist.items : enf.cotisations;
 
             let joursGarde = 0;
             let joursOuvres = 0;
@@ -2246,8 +2303,8 @@
             totalNormalHours = Math.round(totalNormalHours * 100) / 100;
             totalMajoreHours = Math.round(totalMajoreHours * 100) / 100;
 
-            const montantNormal = totalNormalHours * enf.tauxNormal;
-            const montantMajore = totalMajoreHours * enf.tauxMajore;
+            const montantNormal = totalNormalHours * tauxNormalEffectif;
+            const montantMajore = totalMajoreHours * tauxMajoreEffectif;
 
             // Entretien
             const entretienOn = enf.entretienOn !== false;
@@ -2275,11 +2332,11 @@
             }
 
             // Repas
-            const repasOn = enf.repasOn !== false && Array.isArray(enf.repasList) && enf.repasList.length > 0;
+            const repasOn = enf.repasOn !== false && Array.isArray(repasListEffectif) && repasListEffectif.length > 0;
             let repasTotal = 0;
             const repasDetails = [];
             if (repasOn) {
-                enf.repasList.forEach(ration => {
+                repasListEffectif.forEach(ration => {
                     const sousTotal = joursGarde * ration.prix;
                     repasTotal += sousTotal;
                     repasDetails.push({ nom: ration.nom, count: joursGarde, prix: ration.prix, sousTotal });
@@ -2287,11 +2344,11 @@
             }
 
             // Kilomètres
-            const kmOn = !!enf.kmOn && Array.isArray(enf.kmTrajets) && enf.kmTrajets.length > 0;
+            const kmOn = !!enf.kmOn && Array.isArray(kmTrajetsEffectif) && kmTrajetsEffectif.length > 0;
             let kmTotal = 0;
             const kmDetails = [];
             if (kmOn) {
-                enf.kmTrajets.forEach(trajet => {
+                kmTrajetsEffectif.forEach(trajet => {
                     const sousTotal = joursGarde * trajet.distanceKm * trajet.tauxKm;
                     kmTotal += sousTotal;
                     kmDetails.push({ nom: trajet.nom, count: joursGarde, distanceKm: trajet.distanceKm, tauxKm: trajet.tauxKm, sousTotal });
@@ -2301,15 +2358,15 @@
             // Cotisations
             const salaireNetBase = montantNormal + montantMajore;
             const totalHeures = totalNormalHours + totalMajoreHours;
-            const cotisationsOn = !!enf.cotisationsOn && Array.isArray(enf.cotisations) && enf.cotisations.length > 0;
+            const cotisationsOn = !!enf.cotisationsOn && Array.isArray(cotisationsEffectif) && cotisationsEffectif.length > 0;
             let cotisationsTotal = 0;
             const cotisationsDetails = [];
             if (cotisationsOn) {
-                enf.cotisations.forEach(cot => {
+                cotisationsEffectif.forEach(cot => {
                     let charge = 0, desc = '';
                     if (cot.baseType === 'net') { charge = salaireNetBase * (cot.taux / 100); desc = `${cot.taux}% sur Net`; }
                     else if (cot.baseType === 'heure') { charge = totalHeures * cot.taux; desc = `${cot.taux.toFixed(2)}€/h`; }
-                    else if (cot.baseType === 'net_maj') { charge = (totalMajoreHours * enf.tauxMajore) * (cot.taux / 100); desc = `${cot.taux}% sur Heures Sup.`; }
+                    else if (cot.baseType === 'net_maj') { charge = (totalMajoreHours * tauxMajoreEffectif) * (cot.taux / 100); desc = `${cot.taux}% sur Heures Sup.`; }
                     else if (cot.baseType === 'heure_maj') { charge = totalMajoreHours * cot.taux; desc = `${cot.taux.toFixed(2)}€/h sur Heures Sup.`; }
                     cotisationsTotal += charge;
                     cotisationsDetails.push({ nom: cot.nom, desc, montant: charge });
@@ -2325,7 +2382,7 @@
                 mois: moisIso, mensualise,
                 joursGarde, joursOuvres,
                 totalNormalHours, totalMajoreHours,
-                tauxNormal: enf.tauxNormal, tauxMajore: enf.tauxMajore,
+                tauxNormal: tauxNormalEffectif, tauxMajore: tauxMajoreEffectif,
                 montantNormal, montantMajore,
                 entretienOn, entretienTotal, entretienDetails,
                 repasOn, repasTotal, repasDetails,
@@ -2372,7 +2429,7 @@
             document.getElementById('detailsKmDashboard').innerHTML = (R.kmDetails || []).map(d => `<div class="flex justify-between"><span>• ${escapeHtml(d.nom)} : ${d.count} j × ${d.distanceKm}km × ${d.tauxKm.toFixed(2)}€</span><span class="text-white font-semibold">${d.sousTotal.toFixed(2)}€</span></div>`).join('');
 
             document.getElementById('blockCotisationsDashboard').classList.toggle('hidden', !R.cotisationsOn);
-            document.getElementById('detailsCotisationsDashboard').innerHTML = (R.cotisationsDetails || []).map(d => `<div class="flex justify-between"><span>• ${escapeHtml(d.nom)} (${d.desc})</span><span class="text-white font-semibold">${d.montant.toFixed(2)}€</span></div>`).join('');
+            document.getElementById('detailsCotisationsDashboard').innerHTML = (R.cotisationsDetails || []).map(d => `<div class="flex justify-between"><span>• ${escapeHtml(d.nom)} (${escapeHtml(d.desc)})</span><span class="text-white font-semibold">${d.montant.toFixed(2)}€</span></div>`).join('');
 
             document.getElementById('totalNormal').innerText = R.montantNormal.toFixed(2) + " €";
             document.getElementById('totalMajore').innerText = R.montantMajore.toFixed(2) + " €";
@@ -3032,13 +3089,6 @@
             </div>`;
         }
 
-        // Agrège les payes par mois (somme des enfants pour un même mois).
-        function agregerParMois(payes) {
-            const parMois = {};
-            payes.forEach(p => { parMois[p.mois] = (parMois[p.mois] || 0) + (p.totalGeneral || 0); });
-            return Object.keys(parMois).sort().map(m => ({ mois: m, total: parMois[m] }));
-        }
-
         // Agrège les payes par mois avec le détail par catégorie (pour la comparaison).
         function agregerParMoisDetail(payes) {
             const map = {};
@@ -3240,20 +3290,16 @@
                     dernierPayload = JSON.stringify(data);
                     notify(currentUser, 'saving');
                     clearTimeout(pushTimer);
-                    pushTimer = setTimeout(async () => {
-                        try {
-                            await setDoc(spaceDoc(), {
-                                payloadJSON: dernierPayload,
-                                updatedAt: serverTimestamp(),
-                                lastEditorUid: currentUser.uid,
-                                lastEditorName: currentUser.displayName || currentUser.email || ''
-                            });
-                            notify(currentUser, 'synced');
-                        } catch (e) {
-                            if (typeof window.__cloudError === 'function') window.__cloudError('écriture: ' + ((e && e.code) || '') + ' ' + ((e && e.message) || ''));
-                            notify(currentUser, 'error');
-                        }
-                    }, 800);
+                    pushTimer = setTimeout(ecrireMaintenant, 800);
+                },
+
+                // Déclenche immédiatement l'écriture en attente, sans attendre le
+                // débounce (utilisé quand l'onglet passe en arrière-plan/se ferme).
+                flush() {
+                    if (!pushTimer) return;
+                    clearTimeout(pushTimer);
+                    pushTimer = null;
+                    ecrireMaintenant();
                 },
 
                 async deleteRemote() {
@@ -3262,6 +3308,29 @@
                 }
             };
             window.Cloud = Cloud;
+
+            async function ecrireMaintenant() {
+                if (!currentUser) return;
+                try {
+                    await setDoc(spaceDoc(), {
+                        payloadJSON: dernierPayload,
+                        updatedAt: serverTimestamp(),
+                        lastEditorUid: currentUser.uid,
+                        lastEditorName: currentUser.displayName || currentUser.email || ''
+                    });
+                    notify(currentUser, 'synced');
+                } catch (e) {
+                    if (typeof window.__cloudError === 'function') window.__cloudError('écriture: ' + ((e && e.code) || '') + ' ' + ((e && e.message) || ''));
+                    notify(currentUser, 'error');
+                }
+            }
+
+            // Best-effort : si l'onglet passe en arrière-plan (ou se ferme) avec
+            // une écriture débouncée en attente, on la déclenche immédiatement
+            // plutôt que d'attendre les 800 ms et de risquer de la perdre.
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') Cloud.flush();
+            });
 
             // Consomme un éventuel retour de connexion par redirection (mobile).
             getRedirectResult(auth).catch((e) => {

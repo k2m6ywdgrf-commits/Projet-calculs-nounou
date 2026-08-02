@@ -2,8 +2,8 @@
 // récupère la dernière version dès qu'une connexion est disponible tout en
 // restant lançable hors-ligne. Indispensable en app sur l'écran d'accueil
 // iPhone : sans lui, iOS peut resservir indéfiniment une version en cache.
-var CACHE = 'nounoupay-v4';
-var ASSETS = ['./', 'index.html', 'manifest.json', 'icon.svg', 'icon-180.png'];
+var CACHE = 'nounoupay-v5';
+var ASSETS = ['./', 'index.html', 'manifest.json', 'icon.svg', 'icon-180.png', 'icon-512.png'];
 
 // Tailwind (mise en forme de TOUTE l'appli) et le SDK Firebase sont chargés
 // depuis des CDN. Ce sont des scripts statiques et versionnés (jamais de
@@ -13,7 +13,7 @@ var ASSETS = ['./', 'index.html', 'manifest.json', 'icon.svg', 'icon-180.png'];
 // sont volontairement PAS dans cette liste : ils doivent toujours passer
 // par le réseau.
 var EXTERNAL_ASSETS = [
-  'https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4',
+  'https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3',
   'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js',
   'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js',
   'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js'
